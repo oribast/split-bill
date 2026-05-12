@@ -1,15 +1,14 @@
-import { neon } from '@neondatabase/serverless'
-
-const sql = neon(process.env.DATABASE_URL)
+import { sql } from '../../../../lib/db'
 
 export default async function handler(req, res) {
   const { id } = req.query
-  if (req.method !== 'GET') return res.status(405).end()
+  if (!id || !/^[a-zA-Z0-9]+$/.test(id)) return res.status(400).json({ error: 'Invalid room ID' })
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' })
 
   try {
     const events = await sql`
       SELECT 
-        e.id, e.type, e.amount, e.description, e.note, e.created_at, e.is_reverted,
+        e.id, e.type, e.description, e.note, e.created_at, e.is_reverted,
         p.name as payer_name
       FROM events e
       LEFT JOIN participants p ON p.id = e.payer_id
