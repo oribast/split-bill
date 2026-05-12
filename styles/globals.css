@@ -483,3 +483,136 @@ input[type='password']::-ms-clear {
   .participant-amount { text-align: left; min-width: auto; }
   .log-item { flex-direction: column; align-items: flex-start; }
 }
+
+select option {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.logs-modern {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.log-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.log-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--border-color);
+}
+
+.log-card.individual::before { background: var(--accent-primary); }
+.log-card.shared::before { background: #48bb78; }
+.log-card.reverted { opacity: 0.55; }
+
+.log-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.log-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.log-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+}
+
+.log-badge.individual {
+  background: rgba(66, 153, 225, 0.12);
+  color: var(--accent-primary);
+}
+
+.log-badge.shared {
+  background: rgba(72, 187, 120, 0.12);
+  color: #48bb78;
+}
+
+.log-date {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.reverted-label {
+  color: var(--accent-danger);
+  font-weight: 600;
+}
+
+.log-card-body {
+  margin-bottom: 10px;
+}
+
+.log-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.4;
+  margin-bottom: 6px;
+}
+
+.log-payer,
+.log-note-modern {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.log-label {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.log-entries-modern {
+  border-top: 1px dashed var(--border-color);
+  padding-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.log-entry-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+}
+
+.entry-name {
+  color: var(--text-secondary);
+}
+
+.entry-amount {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+  font-family: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+}
+

@@ -7,10 +7,10 @@ export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
   if (!(await requireRoomPassword(req, res, id))) return
 
-  const { amount, selectedIds, description, note } = req.body
+  const { amount, selectedIds, description, note, payerId } = req.body
   const amt = parseFloat(amount)
-  if (!Array.isArray(selectedIds) || selectedIds.length === 0 || isNaN(amt) || amt <= 0) {
-    return res.status(400).json({ error: 'Invalid data' })
+  if (!Array.isArray(selectedIds) || selectedIds.length === 0 || isNaN(amt) || amt <= 0 || !payerId) {
+    return res.status(400).json({ error: 'Invalid data: participants, amount and payer are required' })
   }
 
   try {
@@ -22,8 +22,8 @@ export default async function handler(req, res) {
     const noteValue = (note && String(note).trim()) || null
 
     const ev = await sql`
-      INSERT INTO events (room_id, type, description, note)
-      VALUES (${id}, 'shared', ${desc}, ${noteValue})
+      INSERT INTO events (room_id, type, description, note, payer_id)
+      VALUES (${id}, 'shared', ${desc}, ${noteValue}, ${payerId})
       RETURNING id
     `
     const eventId = ev[0].id
