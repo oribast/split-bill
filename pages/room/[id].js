@@ -869,14 +869,22 @@ export default function Room() {
                       {log.type === 'individual' ? '→' : '⇢'}
                     </span>
                     <div className="log-compact-text">
-                      <div className="log-compact-title">
-                        {log.description}
-                        {log.payer_name && (
-                          <span className="log-compact-payer"> · {log.payer_name}</span>
-                        )}
+                      <div className="log-compact-header">
+                        <span className="log-compact-date">
+                          {new Date(log.created_at).toLocaleDateString('ru-RU', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                          })}
+                          {log.is_reverted && <span className="log-reverted-badge"> · Откачено</span>}
+                        </span>
                       </div>
+                      <div className="log-compact-title">{log.description}</div>
+                      {log.payer_name && (
+                        <div className="log-compact-payer">Оплатил: {log.payer_name}</div>
+                      )}
                       {log.note && (
-                        <div className="log-compact-note">{log.note}</div>
+                        <div className="log-compact-comment">Комментарий: {log.note}</div>
                       )}
                       {log.entries && log.entries.length > 0 && (
                         <div className="log-compact-entries">
@@ -895,9 +903,6 @@ export default function Room() {
                     </div>
                   </div>
                   <div className="log-compact-right">
-                    <span className="log-compact-time">
-                      {new Date(log.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-                    </span>
                     {!isLocked && !log.is_reverted && (log.type === 'individual' || log.type === 'shared') && (
                       <button
                         className="btn-rollback btn-small"
@@ -913,6 +918,7 @@ export default function Room() {
           </div>
         )}
       </div>
+
 
 
       {!isLocked && (
