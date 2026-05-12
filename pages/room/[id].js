@@ -29,8 +29,11 @@ export default function Room() {
   const [selectedId, setSelectedId] = useState('')
   const [individualAmount, setIndividualAmount] = useState('')
   const [individualNote, setIndividualNote] = useState('')
+  const [payerId, setPayerId] = useState('')
+
   const [sharedAmount, setSharedAmount] = useState('')
   const [sharedNote, setSharedNote] = useState('')
+  const [sharedPayerId, setSharedPayerId] = useState('')
   const [selectedIds, setSelectedIds] = useState([])
   const [logs, setLogs] = useState([])
 
@@ -121,13 +124,8 @@ export default function Room() {
   useEffect(() => {
     if (!id || typeof window === 'undefined') return
     const keys = [
-      'newName',
-      'selectedId',
-      'individualAmount',
-      'individualNote',
-      'sharedAmount',
-      'sharedNote',
-      'selectedIds',
+      'newName', 'selectedId', 'individualAmount', 'individualNote', 'payerId',
+      'sharedAmount', 'sharedNote', 'sharedPayerId', 'selectedIds',
     ]
     keys.forEach((key) => {
       const val = sessionStorage.getItem(`room_${id}_form_${key}`)
@@ -140,8 +138,10 @@ export default function Room() {
             selectedId: setSelectedId,
             individualAmount: setIndividualAmount,
             individualNote: setIndividualNote,
+            payerId: setPayerId,
             sharedAmount: setSharedAmount,
             sharedNote: setSharedNote,
+            sharedPayerId: setSharedPayerId,
           }[key]
           if (setter) setter(val)
         }
@@ -155,10 +155,12 @@ export default function Room() {
     sessionStorage.setItem(`room_${id}_form_selectedId`, selectedId)
     sessionStorage.setItem(`room_${id}_form_individualAmount`, individualAmount)
     sessionStorage.setItem(`room_${id}_form_individualNote`, individualNote)
+    sessionStorage.setItem(`room_${id}_form_payerId`, payerId)
     sessionStorage.setItem(`room_${id}_form_sharedAmount`, sharedAmount)
     sessionStorage.setItem(`room_${id}_form_sharedNote`, sharedNote)
+    sessionStorage.setItem(`room_${id}_form_sharedPayerId`, sharedPayerId)
     sessionStorage.setItem(`room_${id}_form_selectedIds`, JSON.stringify(selectedIds))
-  }, [id, newName, selectedId, individualAmount, individualNote, sharedAmount, sharedNote, selectedIds])
+  }, [id, newName, selectedId, individualAmount, individualNote, payerId, sharedAmount, sharedNote, sharedPayerId, selectedIds])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -268,6 +270,8 @@ export default function Room() {
         setParticipants((prev) => prev.filter((p) => p.id !== pid))
         setSelectedIds((prev) => prev.filter((sid) => sid !== pid))
         if (selectedId === pid) setSelectedId('')
+        if (payerId === pid) setPayerId('')
+        if (sharedPayerId === pid) setSharedPayerId('')
         fetchLogs()
         toast.success(`${p?.name || 'Участник'} удалён`)
       } else {
@@ -306,7 +310,14 @@ export default function Room() {
       toast.error('Комната защищена паролем.')
       return
     }
-    if (!selectedId || individualAmount === '') return
+    if (!selectedId || individualAmount === '') {
+      toast.error('Выберите участника и сумму')
+      return
+    }
+    if (!payerId) {
+      toast.error('Выберите, кто платил')
+      return
+    }
     const amount = parseFloat(individualAmount)
     if (isNaN(amount) || amount <= 0) {
       toast.error('Введите корректную сумму')
@@ -324,6 +335,7 @@ export default function Room() {
           amount,
           description: desc,
           note: individualNote,
+          payerId,
         }),
       })
       if (await handleFetchError(res)) return
@@ -338,6 +350,7 @@ export default function Room() {
         setIndividualAmount('')
         setIndividualNote('')
         setSelectedId('')
+        setPayerId('')
         fetchLogs()
         toast.success(`Начислено ${amount.toFixed(2)} ₽`)
       } else {
@@ -355,7 +368,14 @@ export default function Room() {
       toast.error('Комната защищена паролем.')
       return
     }
-    if (sharedAmount === '' || selectedIds.length === 0) return
+    if (sharedAmount === '' || selectedIds.length === 0) {
+      toast.error('Введите сумму и выберите участников')
+      return
+    }
+    if (!sharedPayerId) {
+      toast.error('Выберите, кто платил')
+      return
+    }
     const amount = parseFloat(sharedAmount)
     if (isNaN(amount) || amount <= 0) {
       toast.error('Введите корректную сумму')
@@ -393,6 +413,7 @@ export default function Room() {
           selectedIds,
           description: desc,
           note: sharedNote,
+          payerId: sharedPayerId,
         }),
       })
       if (await handleFetchError(res)) return
@@ -409,6 +430,7 @@ export default function Room() {
         )
         setSharedAmount('')
         setSharedNote('')
+        setSharedPayerId('')
         setSelectedIds([])
         fetchLogs()
         toast.success(`Распределено ${amount.toFixed(2)} ₽`)
@@ -450,8 +472,10 @@ export default function Room() {
         setSelectedId('')
         setIndividualAmount('')
         setIndividualNote('')
+        setPayerId('')
         setSharedAmount('')
         setSharedNote('')
+        setSharedPayerId('')
         fetchRoom()
         fetchLogs()
         toast.success('Все данные очищены')
@@ -696,6 +720,15 @@ export default function Room() {
                 </select>
               </div>
               <div className="form-group">
+                <label>Кто платил</label>
+                <select value={payerId} onChange={(e) => setPayerId(e.target.value)}>
+                  <option value="">Выберите плательщика</option>
+                  {participants.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
                 <label>Сумма</label>
                 <NumericFormat
                   value={individualAmount}
@@ -732,6 +765,15 @@ export default function Room() {
                 decimalScale={2}
                 suffix=" ₽"
               />
+            </div>
+            <div className="form-group" style={{ marginBottom: '12px' }}>
+              <label>Кто платил</label>
+              <select value={sharedPayerId} onChange={(e) => setSharedPayerId(e.target.value)}>
+                <option value="">Выберите плательщика</option>
+                {participants.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
             </div>
             <div className="form-group" style={{ marginBottom: '12px' }}>
               <label>Примечание (за что)</label>
@@ -819,6 +861,11 @@ export default function Room() {
                   </div>
                   <div className="log-desc">
                     {log.description}
+                    {log.payer_name && (
+                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                        Платил: {log.payer_name}
+                      </div>
+                    )}
                     {log.note && <div className="log-note">Примечание: {log.note}</div>}
                     {log.entries && log.entries.length > 0 && (
                       <div className="log-entries">
@@ -835,11 +882,11 @@ export default function Room() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                   <span className="log-badge">{log.type}</span>
                   {!isLocked && !log.is_reverted && (log.type === 'individual' || log.type === 'shared') && (
-                    <button className="btn-rollback btn-small" onClick={() =>          handleRollback(log.id)}>Откатить</button>
-      )}
-    </div>
-  </div>
-))}
+                    <button className="btn-rollback btn-small" onClick={() => handleRollback(log.id)}>Откатить</button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>
@@ -852,4 +899,3 @@ export default function Room() {
     </div>
   )
 }
-
