@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless'
+import { randomUUID } from 'crypto'
 
 const sql = neon(process.env.DATABASE_URL)
 
@@ -18,22 +19,21 @@ export default async function handler(req, res) {
   }
 
   try {
-    await sql.transaction(async (txn) => {
-      const [event] = await txn`
-        INSERT INTO events (room_id, type, amount, description, note, payer_id)
-        VALUES (${id}, 'individual', ${amt}, ${description || ''}, ${note || ''}, ${payerId})
-        RETURNING id
-      `
+    const eventId = randomUUID()
 
-      await txn`
-        INSERT INTO event_entries (event_id, participant_id, delta)
-        VALUES (${event.id}, ${participantId}, ${amt})
-      `
+    await sql`
+      INSERT INTO events (id, room_id, type, amount, description, note, payer_id)
+      VALUES (${eventId}, ${id}, 'individual', ${amt}, ${description || ''}, ${note || ''}, ${payerId})
+    `
 
-      await txn`
-        UPDATE participants SET amount = amount + ${amt} WHERE id = ${participantId}
-      `
-    })
+    await sql`
+      INSERT INTO event_entries (event_id, participant_id, delta)
+      VALUES (${eventId}, ${participantId}, ${amt})
+    `
+
+    await sql`
+      UPDATE participants SET amount = amount + ${amt} WHERE id = ${participantId}
+    `
 
     res.status(200).json({ success: true })
   } catch (err) {
