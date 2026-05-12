@@ -488,3 +488,99 @@ select option {
   background: var(--bg-card);
   color: var(--text-primary);
 }
+
+.logs-list-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.log-compact {
+  padding: 10px 12px;
+  background: var(--log-bg);
+  border-radius: 8px;
+  border-left: 3px solid var(--border-color);
+  transition: background 0.15s;
+}
+
+.log-compact.individual { border-left-color: var(--accent-primary); }
+.log-compact.shared { border-left-color: #48bb78; }
+.log-compact.rolled-back { opacity: 0.5; }
+
+.log-compact-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.log-compact-left {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  flex: 1;
+  min-width: 0;
+}
+
+.log-compact-badge {
+  font-size: 1rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+}
+
+.log-compact-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.log-compact-title {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  word-break: break-word;
+  line-height: 1.4;
+}
+
+.log-compact-payer {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.log-compact-note {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.log-compact-entries {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.log-compact-entry b {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.log-compact-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.log-compact-time {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
