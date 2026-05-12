@@ -1,32 +1,43 @@
-import { sql } from '../../../../lib/db'
-import { requireRoomPassword } from '../../../../lib/roomAuth'
+import { neon } from '@neondatabase/serverless'
+
+const sql = neon(process.env.DATABASE_URL)
 
 export default async function handler(req, res) {
   const { id } = req.query
-  if (!id || !/^[a-zA-Z0-9]+$/.test(id)) return res.status(400).json({ error: 'Invalid room ID' })
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-  if (!(await requireRoomPassword(req, res, id))) return
+  if (req.method !== 'POST') return res.status(405).end()
 
-  const { participantId, amount, description, note } = req.body
+  const { participantId, amount, description, note, payerId } = req.body
+
+  if (!participantId || amount === '' || !payerId) {
+    return res.status(400).json({ error: 'Не хватает данных: участник, сумма или плательщик' })
+  }
+
   const amt = parseFloat(amount)
-  if (!participantId || isNaN(amt) || amt <= 0) return res.status(400).json({ error: 'Invalid data' })
+  if (isNaN(amt) || amt <= 0) {
+    return res.status(400).json({ error: 'Некорректная сумма' })
+  }
 
   try {
-    const desc = description || `Начислено ${amt.toFixed(2)} ₽`
-    const noteValue = (note && String(note).trim()) || null
+    await sql.transaction(async (txn) => {
+      const [event] = await txn`
+        INSERT INTO events (room_id, type, amount, description, note, payer_id)
+        VALUES (${id}, 'individual', ${amt}, ${description || ''}, ${note || ''}, ${payerId})
+        RETURNING id
+      `
 
-    const ev = await sql`
-      INSERT INTO events (room_id, type, description, note)
-      VALUES (${id}, 'individual', ${desc}, ${noteValue})
-      RETURNING id
-    `
-    await sql`
-      INSERT INTO event_entries (event_id, participant_id, delta)
-      VALUES (${ev[0].id}, ${participantId}, ${amt})
-    `
-    return res.status(200).json({ success: true, eventId: ev[0].id })
+      await txn`
+        INSERT INTO event_entries (event_id, participant_id, delta)
+        VALUES (${event.id}, ${participantId}, ${amt})
+      `
+
+      await txn`
+        UPDATE participants SET amount = amount + ${amt} WHERE id = ${participantId}
+      `
+    })
+
+    res.status(200).json({ success: true })
   } catch (err) {
-    console.error('Individual API error:', err)
-    return res.status(500).json({ error: 'Failed' })
+    console.error(err)
+    res.status(500).json({ error: 'Ошибка создания траты' })
   }
 }
