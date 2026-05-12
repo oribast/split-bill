@@ -728,6 +728,8 @@ export default function Room() {
                   ))}
                 </select>
               </div>
+            </div>
+            <div className="form-row" style={{ marginTop: '12px' }}>
               <div className="form-group">
                 <label>Сумма</label>
                 <NumericFormat
@@ -753,29 +755,32 @@ export default function Room() {
             </div>
           </div>
 
+
           <div className="card">
             <h2>Раскидать сумму между участниками</h2>
-            <div className="form-group" style={{ marginBottom: '12px' }}>
-              <label>Сумма для распределения</label>
-              <NumericFormat
-                value={sharedAmount}
-                onValueChange={(values) => setSharedAmount(values.value)}
-                placeholder="0.00"
-                allowNegative={false}
-                decimalScale={2}
-                suffix=" ₽"
-              />
+            <div className="form-row">
+              <div className="form-group">
+                <label>Сумма для распределения</label>
+                <NumericFormat
+                  value={sharedAmount}
+                  onValueChange={(values) => setSharedAmount(values.value)}
+                  placeholder="0.00"
+                  allowNegative={false}
+                  decimalScale={2}
+                  suffix=" ₽"
+                />
+              </div>
+              <div className="form-group">
+                <label>Кто платил</label>
+                <select value={sharedPayerId} onChange={(e) => setSharedPayerId(e.target.value)}>
+                  <option value="">Выберите плательщика</option>
+                  {participants.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
-            <div className="form-group" style={{ marginBottom: '12px' }}>
-              <label>Кто платил</label>
-              <select value={sharedPayerId} onChange={(e) => setSharedPayerId(e.target.value)}>
-                <option value="">Выберите плательщика</option>
-                {participants.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="form-group" style={{ marginBottom: '12px' }}>
+            <div className="form-group" style={{ marginTop: '12px' }}>
               <label>Примечание (за что)</label>
               <input
                 type="text"
@@ -785,7 +790,7 @@ export default function Room() {
                 onKeyDown={(e) => e.key === 'Enter' && distributeShared()}
               />
             </div>
-            <div style={{ marginBottom: '12px', display: 'flex', gap: '8px' }}>
+            <div style={{ marginBottom: '12px', marginTop: '12px', display: 'flex', gap: '8px' }}>
               <button className="btn-secondary btn-small" onClick={selectAll}>Выбрать всех</button>
               <button className="btn-secondary btn-small" onClick={deselectAll}>Снять всех</button>
             </div>
@@ -823,6 +828,7 @@ export default function Room() {
               Распределить поровну ({selectedIds.length} чел.)
             </button>
           </div>
+
         </>
       )}
 

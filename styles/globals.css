@@ -483,3 +483,8 @@ input[type='password']::-ms-clear {
   .participant-amount { text-align: left; min-width: auto; }
   .log-item { flex-direction: column; align-items: flex-start; }
 }
+
+select option {
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
