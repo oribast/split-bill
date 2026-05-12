@@ -858,66 +858,81 @@ export default function Room() {
           </div>
         ) : (
           <div className="logs-list-compact">
-            {logs.map((log) => (
-              <div
-                key={log.id}
-                className={`log-compact ${log.type} ${log.is_reverted ? 'rolled-back' : ''}`}
-              >
-                <div className="log-compact-main">
-                  <div className="log-compact-left">
-                    <span className="log-compact-badge">
-                      {log.type === 'individual' ? '→' : '⇢'}
-                    </span>
-                    <div className="log-compact-text">
-                      <div className="log-compact-header">
-                        <span className="log-compact-date">
-                          {new Date(log.created_at).toLocaleDateString('ru-RU', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric'
-                          })}
-                          {log.is_reverted && <span className="log-reverted-badge"> · Откачено</span>}
-                        </span>
-                      </div>
-                      <div className="log-compact-title">{log.description}</div>
-                      {log.payer_name && (
-                        <div className="log-compact-payer">Оплатил: {log.payer_name}</div>
-                      )}
-                      {log.note && (
-                        <div className="log-compact-comment">Комментарий: {log.note}</div>
-                      )}
-                      {log.entries && log.entries.length > 0 && (
-                        <div className="log-compact-entries">
-                          {log.entries.map((entry, idx) => {
-                            const name = participants.find((pp) => pp.id === entry.participant_id)?.name || 'Удалённый'
-                            const d = parseFloat(entry.delta) || 0
-                            const sign = d > 0 ? '+' : ''
-                            return (
-                              <span key={idx} className="log-compact-entry">
-                                {name} <b>{sign}{d.toFixed(2)} ₽</b>
-                              </span>
-                            )
-                          })}
-                        </div>
+            {logs.map((log) => {
+              const date = new Date(log.created_at)
+              const dateStr = date.toLocaleDateString('ru-RU', {
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric',
+              })
+              const timeStr = date.toLocaleTimeString('ru-RU', {
+                hour: '2-digit',
+                minute: '2-digit',
+              })
+              return (
+                <div
+                  key={log.id}
+                  className={`log-compact ${log.type} ${log.is_reverted ? 'rolled-back' : ''}`}
+                >
+                  <div className="log-compact-header">
+                    <div className="log-compact-left">
+                      <span className={`log-compact-type ${log.type}`}>
+                        {log.type === 'individual' ? 'Индивид.' : 'Групп.'}
+                      </span>
+                      <span className="log-compact-date">
+                        {dateStr}, {timeStr}
+                        {log.is_reverted && <span className="log-compact-reverted"> · Откачено</span>}
+                      </span>
+                    </div>
+                    <div className="log-compact-actions">
+                      {!isLocked && !log.is_reverted && (log.type === 'individual' || log.type === 'shared') && (
+                        <button
+                          className="btn-rollback btn-small"
+                          onClick={() => handleRollback(log.id)}
+                        >
+                          Откатить
+                        </button>
                       )}
                     </div>
                   </div>
-                  <div className="log-compact-right">
-                    {!isLocked && !log.is_reverted && (log.type === 'individual' || log.type === 'shared') && (
-                      <button
-                        className="btn-rollback btn-small"
-                        onClick={() => handleRollback(log.id)}
-                      >
-                        Откатить
-                      </button>
+
+                  <div className="log-compact-body">
+                    <div className="log-compact-title">{log.description}</div>
+
+                    {log.payer_name && (
+                      <div className="log-compact-meta">
+                        <span className="log-compact-label">Оплатил:</span> {log.payer_name}
+                      </div>
+                    )}
+
+                    {log.note && (
+                      <div className="log-compact-meta">
+                        <span className="log-compact-label">Комментарий:</span> {log.note}
+                      </div>
+                    )}
+
+                    {log.entries && log.entries.length > 0 && (
+                      <div className="log-compact-entries">
+                        {log.entries.map((entry, idx) => {
+                          const name = participants.find((pp) => pp.id === entry.participant_id)?.name || 'Удалённый'
+                          const d = parseFloat(entry.delta) || 0
+                          const sign = d > 0 ? '+' : ''
+                          return (
+                            <span key={idx} className="log-compact-entry">
+                              {name}: <b>{sign}{d.toFixed(2)} ₽</b>
+                            </span>
+                          )
+                        })}
+                      </div>
                     )}
                   </div>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
+
 
 
 
