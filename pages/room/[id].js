@@ -857,45 +857,63 @@ export default function Room() {
             <div className="empty-subtitle">Начислите или распределите сумму — записи появятся здесь</div>
           </div>
         ) : (
-          <div className="logs-list">
+          <div className="logs-list-compact">
             {logs.map((log) => (
-              <div key={log.id} className={`log-item ${log.is_reverted ? 'rolled-back' : ''}`}>
-                <div className="log-info">
-                  <div className="log-date">
-                    {new Date(log.created_at).toLocaleString('ru-RU')}
-                    {log.is_reverted && ' · Откачено'}
-                  </div>
-                  <div className="log-desc">
-                    {log.description}
-                    {log.payer_name && (
-                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                        Платил: {log.payer_name}
+              <div
+                key={log.id}
+                className={`log-compact ${log.type} ${log.is_reverted ? 'rolled-back' : ''}`}
+              >
+                <div className="log-compact-main">
+                  <div className="log-compact-left">
+                    <span className="log-compact-badge">
+                      {log.type === 'individual' ? '→' : '⇢'}
+                    </span>
+                    <div className="log-compact-text">
+                      <div className="log-compact-title">
+                        {log.description}
+                        {log.payer_name && (
+                          <span className="log-compact-payer"> · {log.payer_name}</span>
+                        )}
                       </div>
-                    )}
-                    {log.note && <div className="log-note">Примечание: {log.note}</div>}
-                    {log.entries && log.entries.length > 0 && (
-                      <div className="log-entries">
-                        {log.entries.map((entry, idx) => {
-                          const name = participants.find((pp) => pp.id === entry.participant_id)?.name || 'Удалённый'
-                          const d = parseFloat(entry.delta) || 0
-                          const sign = d > 0 ? '+' : ''
-                          return <span key={idx}>{name}: {sign}{d.toFixed(2)} ₽</span>
-                        })}
-                      </div>
+                      {log.note && (
+                        <div className="log-compact-note">{log.note}</div>
+                      )}
+                      {log.entries && log.entries.length > 0 && (
+                        <div className="log-compact-entries">
+                          {log.entries.map((entry, idx) => {
+                            const name = participants.find((pp) => pp.id === entry.participant_id)?.name || 'Удалённый'
+                            const d = parseFloat(entry.delta) || 0
+                            const sign = d > 0 ? '+' : ''
+                            return (
+                              <span key={idx} className="log-compact-entry">
+                                {name} <b>{sign}{d.toFixed(2)} ₽</b>
+                              </span>
+                            )
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="log-compact-right">
+                    <span className="log-compact-time">
+                      {new Date(log.created_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    {!isLocked && !log.is_reverted && (log.type === 'individual' || log.type === 'shared') && (
+                      <button
+                        className="btn-rollback btn-small"
+                        onClick={() => handleRollback(log.id)}
+                      >
+                        Откатить
+                      </button>
                     )}
                   </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                  <span className="log-badge">{log.type}</span>
-                  {!isLocked && !log.is_reverted && (log.type === 'individual' || log.type === 'shared') && (
-                    <button className="btn-rollback btn-small" onClick={() => handleRollback(log.id)}>Откатить</button>
-                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
       </div>
+
 
       {!isLocked && (
         <div className="actions">
