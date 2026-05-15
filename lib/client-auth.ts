@@ -6,18 +6,13 @@ export function storePassword(password: string) {
   if (typeof window !== 'undefined') sessionStorage.setItem('roomPassword', password);
 }
 
-export function getAuthHeaders(): Record<string, string> {
+export function getAuthHeaders(editKey?: string): Record<string, string> {
   if (typeof window === 'undefined') return {};
-  const editKey = sessionStorage.getItem('editKey');
-  if (editKey) return { 'X-Edit-Key': editKey };
+  const key = editKey || sessionStorage.getItem('editKey') || '';
+  if (key) return { 'X-Edit-Key': key };
   const password = sessionStorage.getItem('roomPassword');
   if (password) return { Authorization: `Basic ${btoa(`admin:${password}`)}` };
   return {};
-}
-
-export function isAdmin(): boolean {
-  if (typeof window === 'undefined') return false;
-  return !!sessionStorage.getItem('editKey');
 }
 
 export function isAuthenticated(): boolean {

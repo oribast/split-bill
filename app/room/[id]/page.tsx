@@ -18,22 +18,20 @@ export default async function RoomPage({ params, searchParams }: PageProps) {
     columns: { id: true, name: true, currency: true, passwordHash: true, editKey: true },
   });
 
-  if (!room) {
-    notFound();
-  }
+  if (!room) notFound();
+
+  const isAdmin = key === room.editKey;
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-950 dark:to-gray-900 p-4 md:p-8">
-      <div className="max-w-3xl mx-auto">
-        <RoomClient
-          roomId={id}
-          initialEditKey={key || ''}
-          hasPassword={!!room.passwordHash}
-          roomName={room.name}
-          currency={room.currency}
-          realEditKey={room.editKey}
-        />
-      </div>
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-4 md:p-8">
+      <RoomClient
+        roomId={id}
+        editKey={key || ''}
+        isAdmin={isAdmin}
+        roomName={room.name}
+        currency={room.currency}
+        hasPassword={!!room.passwordHash}
+      />
     </main>
   );
 }
