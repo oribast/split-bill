@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { db } from '@/db';
 import { rooms } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { guardRoom } from '@/lib/api-guard';
 import { createEventWithEntries } from '@/lib/repositories/event';
 import { findIdempotencyKey } from '@/lib/repositories/idempotency';
 import { splitEqual } from '@/lib/split';
@@ -16,9 +17,12 @@ const sharedSchema = z.object({
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id: roomId } = await params;
+
+  const guard = await guardRoom(request, roomId, { requireAdmin: true });
+  if (guard) return guard;
+
   const body = await request.json();
   const parsed = sharedSchema.safeParse(body);
-
   if (!parsed.success) {
     return NextResponse.json(
       { error: 'Invalid input', code: 'validation_failed', details: parsed.error.flatten() },
@@ -40,7 +44,6 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     where: eq(rooms.id, roomId),
     with: { participants: true },
   });
-
   if (!room) {
     return NextResponse.json({ error: 'Room not found' }, { status: 404 });
   }
@@ -64,15 +67,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   const entries = splitEqual(totalAmount, participantIds);
-
   const event = await createEventWithEntries(
-    {
-      roomId,
-      name,
-      totalAmount,
-      createdBy,
-      entries,
-    },
+    { roomId, name, totalAmount, createdBy, entries },
     idempotencyKey ?? undefined
   );
 

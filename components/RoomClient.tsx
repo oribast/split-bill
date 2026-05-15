@@ -13,6 +13,7 @@ import { ExpenseHistory } from './ExpenseHistory';
 import { ClearRoomButton } from './ClearRoomButton';
 import { PasswordPrompt } from './PasswordPrompt';
 import { ThemeToggle } from './ThemeToggle';
+import { Skeleton } from './Skeleton';
 
 const fetcher = (url: string, editKey: string) =>
   fetch(url, { headers: getAuthHeaders(editKey) }).then((r) => {
@@ -75,7 +76,7 @@ export function RoomClient({
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
         <div className="flex items-start gap-4">
           <div className="hidden sm:flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600/10 text-blue-600 dark:text-blue-400 shrink-0">
             <Wallet className="w-6 h-6" />
@@ -99,7 +100,7 @@ export function RoomClient({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <ParticipantList participants={room.participants} currency={currency} />
+          <ParticipantList participants={room.participants} currency={currency} isLoading={isLoading} />
           <ExpenseHistory
             roomId={roomId}
             events={room.events}

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getRoomById, deleteRoom } from '@/lib/repositories/room';
+import { guardRoom } from '@/lib/api-guard';
 import { z } from 'zod';
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -17,6 +18,9 @@ const deleteSchema = z.object({
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const guard = await guardRoom(request, id, { requireAdmin: true });
+  if (guard) return guard;
+
   const body = await request.json();
   const parsed = deleteSchema.safeParse(body);
   if (!parsed.success) {

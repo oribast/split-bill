@@ -20,14 +20,12 @@ export default async function RoomPage({ params, searchParams }: PageProps) {
 
   if (!room) notFound();
 
-  const isAdmin = key === room.editKey;
-
   return (
     <main className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-4 md:p-8">
       <RoomClient
         roomId={id}
         editKey={key || ''}
-        isAdmin={isAdmin}
+        isAdmin={key === room.editKey}
         roomName={room.name}
         currency={room.currency}
         hasPassword={!!room.passwordHash}

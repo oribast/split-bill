@@ -1,6 +1,7 @@
 'use client';
 
-import { User, TrendingUp, TrendingDown } from 'lucide-react';
+import { Skeleton } from './Skeleton';
+import { User } from 'lucide-react';
 
 type Participant = {
   id: string;
@@ -11,12 +12,7 @@ type Participant = {
 };
 
 function initials(name: string) {
-  return name
-    .split(' ')
-    .map((n) => n[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
+  return name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
 }
 
 function avatarColor(id: string) {
@@ -29,10 +25,13 @@ function avatarColor(id: string) {
 export function ParticipantList({
   participants,
   currency,
+  isLoading,
 }: {
   participants?: Participant[];
   currency: string;
+  isLoading?: boolean;
 }) {
+  if (isLoading && !participants) return <Skeleton count={3} />;
   if (!participants?.length) {
     return (
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 text-center text-slate-500 dark:text-slate-400 text-sm">
@@ -61,8 +60,7 @@ export function ParticipantList({
                   </p>
                 </div>
               </div>
-              <div className={`flex items-center gap-1 font-bold tabular-nums ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                {isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+              <div className={`font-bold tabular-nums ${isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                 {isPositive ? '+' : ''}{(net / 100).toFixed(2)} {currency}
               </div>
             </div>
