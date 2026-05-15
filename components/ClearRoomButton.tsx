@@ -33,27 +33,27 @@ export function ClearRoomButton({
 
   if (!confirming) {
     return (
-      <button onClick={() => setConfirming(true)} className="btn btn-ghost w-full text-danger border-danger/20 hover:bg-danger-soft">
-        <Trash2 className="w-4 h-4" /> Очистить все траты
-      </button>
+      <div className="actions">
+        <button className="btn-danger" onClick={() => setConfirming(true)}>
+          <Trash2 className="icon" /> Очистить всё
+        </button>
+      </div>
     );
   }
 
   return (
-    <div className="card border-danger/30 bg-danger-soft">
-      <div className="flex items-start gap-3 mb-4">
-        <AlertTriangle className="w-5 h-5 text-danger shrink-0 mt-0.5" />
-        <p className="text-small text-danger font-medium">
-          Все траты будут безвозвратно удалены. Это необратимо.
-        </p>
-      </div>
-      <div className="flex gap-3">
-        <button onClick={handleClear} className="btn btn-danger flex-1">
-          Удалить всё
-        </button>
-        <button onClick={() => setConfirming(false)} className="btn btn-secondary flex-1">
-          Отмена
-        </button>
+    <div className="card" style={{ borderColor: 'var(--accent-danger)', background: 'var(--accent-danger-soft)' }}>
+      <div className="flex-col gap-4 flex">
+        <div style={{ display: 'flex', alignItems: 'start', gap: 12 }}>
+          <AlertTriangle className="icon" style={{ color: 'var(--accent-danger)', marginTop: 2 }} />
+          <p style={{ fontSize: '0.95rem', fontWeight: 500, color: 'var(--accent-danger)' }}>
+            Все траты будут безвозвратно удалены. Это необратимо.
+          </p>
+        </div>
+        <div className="form-row">
+          <button className="btn-danger" onClick={handleClear}>Удалить всё</button>
+          <button className="btn-secondary" onClick={() => setConfirming(false)}>Отмена</button>
+        </div>
       </div>
     </div>
   );

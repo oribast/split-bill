@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Split } from 'lucide-react';
 import { splitEqual } from '@/lib/split';
 import { sharedExpenseSchema } from '@/lib/validations';
 import { getAuthHeaders } from '@/lib/client-auth';
@@ -14,11 +13,13 @@ export function SharedExpenseForm({
   participants,
   editKey,
   onAdd,
+  currency,
 }: {
   roomId: string;
   participants: Participant[];
   editKey: string;
   onAdd: () => void;
+  currency: string;
 }) {
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
@@ -29,15 +30,16 @@ export function SharedExpenseForm({
   const preview = totalAmount > 0 && selectedIds.length > 0 ? splitEqual(totalAmount, selectedIds) : [];
 
   function toggle(id: string) {
-    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   }
+
+  const selectAll = () => setSelectedIds(participants.map((p) => p.id));
+  const deselectAll = () => setSelectedIds([]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const parsed = sharedExpenseSchema.safeParse({
-      name,
-      amount: parseFloat(amount),
-      participantIds: selectedIds,
+      name, amount: parseFloat(amount), participantIds: selectedIds,
     });
     if (!parsed.success) {
       toast.error(parsed.error.errors[0].message);
@@ -60,9 +62,7 @@ export function SharedExpenseForm({
     setLoading(false);
     if (res.ok) {
       toast.success('Общая трата добавлена');
-      setName('');
-      setAmount('');
-      setSelectedIds([]);
+      setName(''); setAmount(''); setSelectedIds([]);
       onAdd();
     } else {
       const data = await res.json().catch(() => ({}));
@@ -72,43 +72,48 @@ export function SharedExpenseForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex-col gap-3 flex">
-      <div className="flex items-center gap-2 text-small font-semibold">
-        <Split className="w-4 h-4 text-primary" /> Общая трата
+      <div className="form-row">
+        <div className="form-group">
+          <label>Сумма для распределения</label>
+          <input type="number" step="0.01" min="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={`0.00 ${currency}`} />
+        </div>
+        <div className="form-group">
+          <label>Примечание</label>
+          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Например, ужин в ресторане" />
+        </div>
       </div>
-      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Название" className="input" />
-      <input
-        type="number"
-        step="0.01"
-        min="0.01"
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
-        placeholder="Сумма"
-        className="input"
-      />
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
+        <button type="button" className="btn-secondary btn-small" onClick={selectAll}>Выбрать всех</button>
+        <button type="button" className="btn-secondary btn-small" onClick={deselectAll}>Снять всех</button>
+      </div>
+
       <div className="checkbox-grid">
         {participants.map((p) => (
           <label key={p.id} className="checkbox-item">
             <input type="checkbox" checked={selectedIds.includes(p.id)} onChange={() => toggle(p.id)} />
-            {p.name}
+            <span>{p.name}</span>
           </label>
         ))}
       </div>
+
       {preview.length > 0 && (
         <div className="preview-box">
-          <p className="preview-box-title">Распределение</p>
+          <div className="preview-title">Предпросмотр распределения:</div>
           {preview.map((entry) => {
             const person = participants.find((x) => x.id === entry.participantId);
             return (
-              <div key={entry.participantId} className="flex-between text-small">
+              <div key={entry.participantId} className="preview-row">
                 <span>{person?.name}</span>
-                <span className="font-medium">{(entry.share / 100).toFixed(2)}</span>
+                <span>+{(entry.share / 100).toFixed(2)} {currency}</span>
               </div>
             );
           })}
         </div>
       )}
-      <button type="submit" disabled={loading} className="btn btn-primary w-full">
-        {loading ? 'Сохранение...' : 'Добавить общую трату'}
+
+      <button type="submit" className="btn-primary" disabled={loading || selectedIds.length === 0}>
+        {loading ? 'Сохранение...' : `Распределить поровну (${selectedIds.length} чел.)`}
       </button>
     </form>
   );

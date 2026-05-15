@@ -21,7 +21,7 @@ export default async function RoomPage({ params, searchParams }: PageProps) {
   if (!room) notFound();
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-4 md:p-8">
+    <div className="container">
       <RoomClient
         roomId={id}
         editKey={key || ''}
@@ -30,6 +30,6 @@ export default async function RoomPage({ params, searchParams }: PageProps) {
         currency={room.currency}
         hasPassword={!!room.passwordHash}
       />
-    </main>
+    </div>
   );
 }

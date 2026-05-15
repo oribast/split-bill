@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createRoom } from '@/lib/repositories/room';
 import { createRoomSchema } from '@/lib/validations';
-import { Wallet, ArrowRight, Shield } from 'lucide-react';
+import { Lock, ArrowRight } from 'lucide-react';
 
 export default function HomePage() {
   async function createRoomAction(formData: FormData) {
@@ -20,68 +20,53 @@ export default function HomePage() {
   }
 
   return (
-    <main className="hero-gradient min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/10 text-white mb-4">
-            <Wallet className="w-8 h-8" />
-          </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Split Bill</h1>
-          <p className="text-slate-300 mt-2">Делите траты честно и просто</p>
-        </div>
+    <div className="container" style={{ textAlign: 'center', paddingTop: '80px' }}>
+      <h1 style={{ fontSize: '2.5rem', marginBottom: '16px' }}>Split Bill</h1>
+      <p style={{ color: 'var(--text-muted)', marginBottom: '48px', fontSize: '1.125rem' }}>
+        Создай комнату для разделения счёта и поделись ссылкой
+      </p>
 
-        <div className="hero-card">
-          <form action={createRoomAction} className="flex-col gap-4 flex">
-            <div className="form-group">
-              <label className="form-label text-white/90">Название комнаты</label>
+      <div className="card" style={{ maxWidth: '400px', margin: '0 auto 24px' }}>
+        <form action={createRoomAction} className="flex-col gap-4 flex">
+          <div className="form-group" style={{ textAlign: 'left' }}>
+            <label>Название комнаты</label>
+            <input
+              name="name"
+              required
+              maxLength={100}
+              placeholder="Например, Поездка в Берлин"
+            />
+          </div>
+
+          <div className="form-group" style={{ textAlign: 'left' }}>
+            <label>Валюта</label>
+            <select name="currency" defaultValue="RUB">
+              <option value="RUB">RUB</option>
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="KZT">KZT</option>
+            </select>
+          </div>
+
+          <div className="form-group" style={{ textAlign: 'left' }}>
+            <label>Пароль (опционально)</label>
+            <div className="password-field">
+              <Lock className="icon" style={{ color: 'var(--text-muted)' }} />
               <input
-                name="name"
-                required
+                name="password"
+                type="password"
                 maxLength={100}
-                placeholder="Например, Поездка в Прагу"
-                className="input bg-white/10 border-white/20 text-white placeholder:text-white/40"
+                placeholder="Защитите комнату"
               />
             </div>
+          </div>
 
-            <div className="form-group">
-              <label className="form-label text-white/90">Пароль (опционально)</label>
-              <div className="relative">
-                <Shield className="absolute left-3 top-3 w-4 h-4 text-white/40" />
-                <input
-                  name="password"
-                  type="password"
-                  maxLength={100}
-                  placeholder="Защитите комнату"
-                  className="input bg-white/10 border-white/20 text-white placeholder:text-white/40 pl-10"
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label text-white/90">Валюта</label>
-              <select
-                name="currency"
-                defaultValue="RUB"
-                className="input select bg-white/10 border-white/20 text-white"
-              >
-                <option value="RUB">RUB</option>
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-                <option value="KZT">KZT</option>
-              </select>
-            </div>
-
-            <button type="submit" className="btn btn-primary w-full mt-2">
-              Создать комнату
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          </form>
-        </div>
-
-        <p className="text-center text-white/40 text-xs mt-6">
-          После создания вы получите ссылку для доступа к комнате
-        </p>
+          <button type="submit" className="btn-primary" style={{ width: '100%', padding: '14px', fontSize: '1.05rem', marginTop: 4 }}>
+            Создать комнату
+            <ArrowRight className="icon" />
+          </button>
+        </form>
       </div>
-    </main>
+    </div>
   );
 }

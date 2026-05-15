@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { UserPlus } from 'lucide-react';
 import { addParticipantSchema } from '@/lib/validations';
 
 export function AddParticipantForm({ roomId, onAdd }: { roomId: string; onAdd: () => void }) {
@@ -33,15 +32,18 @@ export function AddParticipantForm({ roomId, onAdd }: { roomId: string; onAdd: (
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
-      <input
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        placeholder="Имя нового участника"
-        className="input flex-1"
-      />
-      <button type="submit" disabled={loading} className="btn btn-primary px-3">
-        <UserPlus className="w-4 h-4" />
+    <form onSubmit={handleSubmit} className="form-row" style={{ marginBottom: 16 }}>
+      <div className="form-group">
+        <label>Имя</label>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Например, Алексей"
+          onKeyDown={(e) => e.key === 'Enter' && handleSubmit(e)}
+        />
+      </div>
+      <button type="submit" className="btn-primary" disabled={loading}>
+        Добавить
       </button>
     </form>
   );

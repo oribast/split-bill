@@ -2,16 +2,27 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { Lock, ArrowRight } from 'lucide-react';
+import { Lock, Eye, EyeOff } from 'lucide-react';
 import { storePassword } from '@/lib/client-auth';
 
-export function PasswordPrompt({ roomId, onSuccess }: { roomId: string; onSuccess: () => void }) {
+export function PasswordPrompt({
+  roomId,
+  onSuccess,
+  inline,
+}: {
+  roomId: string;
+  onSuccess: () => void;
+  inline?: boolean;
+}) {
   const [password, setPassword] = useState('');
+  const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
+    setError('');
     const res = await fetch(`/api/v1/rooms/${roomId}`, {
       headers: { Authorization: `Basic ${btoa(`admin:${password}`)}` },
     });
@@ -20,31 +31,49 @@ export function PasswordPrompt({ roomId, onSuccess }: { roomId: string; onSucces
       toast.success('Вход выполнен');
       onSuccess();
     } else {
+      setError('Неверный пароль');
       toast.error('Неверный пароль');
     }
     setLoading(false);
   }
 
+  const content = (
+    <form onSubmit={handleSubmit} className="form-row">
+      <div className="password-field" style={{ flex: 1, minWidth: 200 }}>
+        <Lock className="icon" style={{ color: 'var(--text-muted)' }} />
+        <input
+          type={show ? 'text' : 'password'}
+          value={password}
+          onChange={(e) => { setPassword(e.target.value); setError(''); }}
+          placeholder="Пароль"
+          autoFocus
+        />
+        <button type="button" className="password-toggle" onClick={() => setShow(!show)}>
+          {show ? <EyeOff className="icon" /> : <Eye className="icon" />}
+        </button>
+      </div>
+      <button type="submit" className="btn-primary" disabled={loading}>
+        {loading ? 'Проверка...' : 'Разблокировать'}
+      </button>
+    </form>
+  );
+
+  if (inline) {
+    return (
+      <div>
+        {content}
+        {error && <p style={{ color: 'var(--accent-danger)', fontSize: '0.875rem', marginTop: 8 }}>{error}</p>}
+      </div>
+    );
+  }
+
   return (
     <div className="modal-overlay">
       <div className="modal">
-        <div className="w-12 h-12 rounded-xl bg-primary-soft text-primary flex items-center justify-center mb-4">
-          <Lock className="w-6 h-6" />
-        </div>
         <h2 className="modal-title">Комната защищена</h2>
         <p className="modal-text">Введите пароль для доступа</p>
-        <form onSubmit={handleSubmit} className="flex-col gap-4 flex">
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Пароль"
-            className="input"
-          />
-          <button type="submit" disabled={loading} className="btn btn-primary w-full">
-            {loading ? 'Проверка...' : <><span>Войти</span><ArrowRight className="w-4 h-4" /></>}
-          </button>
-        </form>
+        {content}
+        {error && <p style={{ color: 'var(--accent-danger)', fontSize: '0.875rem', marginTop: 8 }}>{error}</p>}
       </div>
     </div>
   );
