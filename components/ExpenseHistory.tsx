@@ -48,9 +48,9 @@ export function ExpenseHistory({
 
   if (!events?.length) {
     return (
-      <div className="bg-white dark:bg-slate-900 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700 p-10 text-center">
-        <Receipt className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-        <p className="text-slate-500 dark:text-slate-400 text-sm">Пока нет трат</p>
+      <div className="card text-center py-10 text-muted border-dashed">
+        <Receipt className="w-8 h-8 mx-auto mb-3 opacity-30" />
+        <p className="text-small">Пока нет трат</p>
       </div>
     );
   }
@@ -58,47 +58,56 @@ export function ExpenseHistory({
   const sorted = [...events].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
 
   return (
-    <div className="space-y-3">
-      <h3 className="text-sm font-semibold text-slate-900 dark:text-white uppercase tracking-wider">История трат</h3>
+    <div className="flex-col gap-3 flex">
+      <h3 className="text-small font-semibold uppercase tracking-wider text-muted px-1">
+        История трат
+      </h3>
       {sorted.map((ev) => (
-        <div key={ev.id} className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
-          <div className="flex items-start justify-between mb-3">
+        <div key={ev.id} className="expense-card">
+          <div className="flex-between mb-3">
             <div className="flex items-start gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-600/10 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-primary-soft text-primary flex items-center justify-center shrink-0">
                 <Receipt className="w-5 h-5" />
               </div>
               <div>
-                <p className="font-semibold text-slate-900 dark:text-white">{ev.name}</p>
-                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                <p className="font-semibold">{ev.name}</p>
+                <div className="flex items-center gap-2 text-xs text-muted mt-0.5">
                   <Calendar className="w-3 h-3" />
-                  {new Date(ev.createdAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+                  {new Date(ev.createdAt).toLocaleDateString('ru-RU', {
+                    day: 'numeric',
+                    month: 'long',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
                   {ev.creator && <span>· {ev.creator.name}</span>}
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <span className="font-bold text-slate-900 dark:text-white tabular-nums">{(ev.totalAmount / 100).toFixed(2)} {currency}</span>
+              <span className="font-bold text-lg tabular">
+                {(ev.totalAmount / 100).toFixed(2)} {currency}
+              </span>
               {isAdmin && (
                 <button
                   onClick={() => handleRevert(ev.id, ev.name)}
-                  className="text-xs font-medium text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-900/20 px-2 py-1 rounded-lg transition-colors flex items-center gap-1"
+                  className="btn btn-ghost text-danger text-xs px-2 py-1 h-auto"
                 >
                   <RotateCcw className="w-3 h-3" /> Откатить
                 </button>
               )}
             </div>
           </div>
-          <div className="space-y-1.5 text-sm">
+          <div className="flex-col gap-1.5 flex text-small">
             {ev.entries.map((entry) => {
               const person = participants.find((p) => p.id === entry.participantId);
               return (
-                <div key={entry.participantId} className="flex justify-between items-center text-slate-600 dark:text-slate-400">
-                  <span className="text-slate-700 dark:text-slate-300">{person?.name ?? 'Unknown'}</span>
-                  <span className="tabular-nums">
-                    <span className={entry.amount > 0 ? 'text-emerald-600 dark:text-emerald-400 font-medium' : ''}>
+                <div key={entry.participantId} className="flex-between text-muted">
+                  <span className="text-text">{person?.name ?? 'Unknown'}</span>
+                  <span className="tabular">
+                    <span className={entry.amount > 0 ? 'balance-positive' : ''}>
                       {(entry.amount / 100).toFixed(2)}
                     </span>
-                    <span className="mx-1 text-slate-300 dark:text-slate-600">/</span>
+                    <span className="mx-1 opacity-30">/</span>
                     <span>{(entry.share / 100).toFixed(2)}</span>
                   </span>
                 </div>

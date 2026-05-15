@@ -1,90 +1,132 @@
-import { redirect } from 'next/navigation';
-import { createRoom } from '@/lib/repositories/room';
-import { createRoomSchema } from '@/lib/validations';
-import { Wallet, ArrowRight, Shield } from 'lucide-react';
+'use client';
 
-export default function HomePage() {
-  async function createRoomAction(formData: FormData) {
-    'use server';
+import { useEffect } from 'react';
+import useSWR from 'swr';
+import { toast } from 'sonner';
+import { Wallet, Users, Receipt, Loader2, RefreshCw } from 'lucide-react';
+import { storeEditKey, getAuthHeaders } from '@/lib/client-auth';
+import { ParticipantList } from './ParticipantList';
+import { AddParticipantForm } from './AddParticipantForm';
+import { SharedExpenseForm } from './SharedExpenseForm';
+import { IndividualExpenseForm } from './IndividualExpenseForm';
+import { ExpenseHistory } from './ExpenseHistory';
+import { ClearRoomButton } from './ClearRoomButton';
+import { PasswordPrompt } from './PasswordPrompt';
+import { ThemeToggle } from './ThemeToggle';
+import { Skeleton } from './Skeleton';
 
-    const parsed = createRoomSchema.safeParse({
-      name: formData.get('name'),
-      password: formData.get('password') || undefined,
-      currency: formData.get('currency') || 'RUB',
-    });
+const fetcher = (url: string, editKey: string) =>
+  fetch(url, { headers: getAuthHeaders(editKey) }).then((r) => {
+    if (r.status === 401) throw new Error('Unauthorized');
+    if (!r.ok) throw new Error('Failed to fetch');
+    return r.json();
+  });
 
-    if (!parsed.success) throw new Error('Invalid input');
+export function RoomClient({
+  roomId,
+  editKey,
+  isAdmin,
+  roomName,
+  currency,
+  hasPassword,
+}: {
+  roomId: string;
+  editKey: string;
+  isAdmin: boolean;
+  roomName: string;
+  currency: string;
+  hasPassword: boolean;
+}) {
+  useEffect(() => {
+    if (editKey) storeEditKey(editKey);
+  }, [editKey]);
 
-    const room = await createRoom(parsed.data);
-    redirect(`/room/${room.id}?key=${room.editKey}`);
+  const { data: room, error, isLoading, mutate } = useSWR(
+    [`/api/v1/rooms/${roomId}`, editKey],
+    ([url, key]) => fetcher(url, key),
+    { revalidateOnFocus: true, dedupingInterval: 2000 }
+  );
+
+  if (error?.message === 'Unauthorized' && hasPassword && !room) {
+    return <PasswordPrompt roomId={roomId} onSuccess={() => mutate()} />;
+  }
+
+  if (isLoading && !room) {
+    return (
+      <div className="page-container flex flex-col items-center justify-center py-20 text-muted">
+        <Loader2 className="w-8 h-8 animate-spin mb-3" />
+        <p>Загрузка комнаты...</p>
+      </div>
+    );
+  }
+
+  if (!room) {
+    return (
+      <div className="page-container text-center py-16">
+        <p className="text-danger font-medium mb-4">Не удалось загрузить комнату</p>
+        <button onClick={() => mutate()} className="btn btn-secondary gap-2">
+          <RefreshCw className="w-4 h-4" /> Попробовать снова
+        </button>
+      </div>
+    );
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      <div className="w-full max-w-md">
-        <div className="mb-8 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-blue-600/20 text-blue-400 mb-4">
-            <Wallet className="w-8 h-8" />
+    <div className="page-container">
+      <div className="card flex-between mb-6">
+        <div className="flex items-start gap-4">
+          <div className="hidden sm:flex items-center justify-center w-12 h-12 rounded-xl bg-primary-soft text-primary shrink-0">
+            <Wallet className="w-6 h-6" />
           </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Split Bill</h1>
-          <p className="text-slate-400 mt-2">Делите траты честно и просто</p>
+          <div>
+            <h1 className="text-2xl font-bold">{room.name || roomName}</h1>
+            <p className="text-small text-muted mt-1">
+              {currency} · {room.participants?.length ?? 0} участников · {room.events?.length ?? 0} трат
+            </p>
+          </div>
         </div>
-
-        <div className="bg-white/10 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl">
-          <form action={createRoomAction} className="space-y-5">
-            <div>
-              <label className="block text-sm font-medium mb-1.5 text-slate-200">Название комнаты</label>
-              <input
-                name="name"
-                required
-                maxLength={100}
-                placeholder="Например, Поездка в Прагу"
-                className="w-full rounded-xl border border-slate-600 bg-slate-800/50 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1.5 text-slate-200">Пароль (опционально)</label>
-              <div className="relative">
-                <Shield className="absolute left-3 top-3 w-4 h-4 text-slate-500" />
-                <input
-                  name="password"
-                  type="password"
-                  maxLength={100}
-                  placeholder="Защитите комнату"
-                  className="w-full rounded-xl border border-slate-600 bg-slate-800/50 pl-10 pr-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1.5 text-slate-200">Валюта</label>
-              <select
-                name="currency"
-                defaultValue="RUB"
-                className="w-full rounded-xl border border-slate-600 bg-slate-800/50 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all"
-              >
-                <option value="RUB">RUB</option>
-                <option value="USD">USD</option>
-                <option value="EUR">EUR</option>
-                <option value="KZT">KZT</option>
-              </select>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full group bg-blue-600 hover:bg-blue-500 text-white rounded-xl py-3.5 font-semibold shadow-lg shadow-blue-600/25 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-            >
-              Создать комнату
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-            </button>
-          </form>
+        <div className="flex items-center gap-2">
+          {isAdmin && <span className="badge badge-success">Админ</span>}
+          <ThemeToggle />
         </div>
-
-        <p className="text-center text-slate-500 text-xs mt-6">
-          После создания вы получите ссылку для доступа к комнате
-        </p>
       </div>
-    </main>
+
+      <div className="grid-layout">
+        <div className="main-content">
+          <ParticipantList participants={room.participants} currency={currency} isLoading={isLoading} />
+          <ExpenseHistory
+            roomId={roomId}
+            events={room.events}
+            participants={room.participants}
+            currency={currency}
+            isAdmin={isAdmin}
+            editKey={editKey}
+            onRevert={() => mutate()}
+          />
+        </div>
+
+        {isAdmin && (
+          <div className="sidebar">
+            <div className="card">
+              <h3 className="font-semibold mb-3 flex items-center gap-2 text-small">
+                <Users className="w-4 h-4 text-muted" /> Участники
+              </h3>
+              <AddParticipantForm roomId={roomId} onAdd={() => mutate()} />
+            </div>
+
+            <div className="card flex-col gap-4 flex">
+              <h3 className="font-semibold flex items-center gap-2 text-small">
+                <Receipt className="w-4 h-4 text-muted" /> Новая трата
+              </h3>
+              <SharedExpenseForm roomId={roomId} participants={room.participants} editKey={editKey} onAdd={() => mutate()} />
+              <div className="divider" />
+              <IndividualExpenseForm roomId={roomId} participants={room.participants} editKey={editKey} onAdd={() => mutate()} />
+            </div>
+
+            <ClearRoomButton roomId={roomId} editKey={editKey} onClear={() => mutate()} />
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

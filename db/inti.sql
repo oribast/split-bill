@@ -1,4 +1,11 @@
-CREATE TABLE IF NOT EXISTS rooms (
+DROP TABLE IF EXISTS audit_logs CASCADE;
+DROP TABLE IF EXISTS idempotency_keys CASCADE;
+DROP TABLE IF EXISTS event_entries CASCADE;
+DROP TABLE IF EXISTS events CASCADE;
+DROP TABLE IF EXISTS participants CASCADE;
+DROP TABLE IF EXISTS rooms CASCADE;
+
+CREATE TABLE rooms (
     id UUID PRIMARY KEY NOT NULL,
     name TEXT NOT NULL,
     edit_key VARCHAR(36) NOT NULL,
@@ -8,7 +15,7 @@ CREATE TABLE IF NOT EXISTS rooms (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS participants (
+CREATE TABLE participants (
     id UUID PRIMARY KEY NOT NULL,
     room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
@@ -16,7 +23,7 @@ CREATE TABLE IF NOT EXISTS participants (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS events (
+CREATE TABLE events (
     id UUID PRIMARY KEY NOT NULL,
     room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
@@ -27,7 +34,7 @@ CREATE TABLE IF NOT EXISTS events (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS event_entries (
+CREATE TABLE event_entries (
     id UUID PRIMARY KEY NOT NULL,
     event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
     participant_id UUID NOT NULL REFERENCES participants(id) ON DELETE CASCADE,
@@ -36,7 +43,7 @@ CREATE TABLE IF NOT EXISTS event_entries (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE TABLE IF NOT EXISTS idempotency_keys (
+CREATE TABLE idempotency_keys (
     id UUID PRIMARY KEY NOT NULL,
     room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
     key VARCHAR(36) NOT NULL UNIQUE,
@@ -45,7 +52,7 @@ CREATE TABLE IF NOT EXISTS idempotency_keys (
     expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '24 hours'
 );
 
-CREATE TABLE IF NOT EXISTS audit_logs (
+CREATE TABLE audit_logs (
     id SERIAL PRIMARY KEY,
     room_id UUID REFERENCES rooms(id) ON DELETE SET NULL,
     action TEXT NOT NULL,
@@ -54,11 +61,11 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_participants_room_id ON participants(room_id);
-CREATE INDEX IF NOT EXISTS idx_events_room_id ON events(room_id);
-CREATE INDEX IF NOT EXISTS idx_events_created_by ON events(created_by);
-CREATE INDEX IF NOT EXISTS idx_event_entries_event_id ON event_entries(event_id);
-CREATE INDEX IF NOT EXISTS idx_event_entries_participant_id ON event_entries(participant_id);
-CREATE INDEX IF NOT EXISTS idx_idempotency_keys_room_key ON idempotency_keys(room_id, key);
-CREATE INDEX IF NOT EXISTS idx_idempotency_keys_expires ON idempotency_keys(expires_at);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_room_id ON audit_logs(room_id);
+CREATE INDEX idx_participants_room_id ON participants(room_id);
+CREATE INDEX idx_events_room_id ON events(room_id);
+CREATE INDEX idx_events_created_by ON events(created_by);
+CREATE INDEX idx_event_entries_event_id ON event_entries(event_id);
+CREATE INDEX idx_event_entries_participant_id ON event_entries(participant_id);
+CREATE INDEX idx_idempotency_keys_room_key ON idempotency_keys(room_id, key);
+CREATE INDEX idx_idempotency_keys_expires ON idempotency_keys(expires_at);
+CREATE INDEX idx_audit_logs_room_id ON audit_logs(room_id);

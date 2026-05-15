@@ -53,7 +53,7 @@ export function RoomClient({
 
   if (isLoading && !room) {
     return (
-      <div className="max-w-5xl mx-auto flex flex-col items-center justify-center py-20 text-slate-400">
+      <div className="page-container flex flex-col items-center justify-center py-20 text-muted">
         <Loader2 className="w-8 h-8 animate-spin mb-3" />
         <p>Загрузка комнаты...</p>
       </div>
@@ -62,12 +62,9 @@ export function RoomClient({
 
   if (!room) {
     return (
-      <div className="max-w-5xl mx-auto text-center py-16">
-        <p className="text-red-500 font-medium mb-4">Не удалось загрузить комнату</p>
-        <button
-          onClick={() => mutate()}
-          className="inline-flex items-center gap-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
-        >
+      <div className="page-container text-center py-16">
+        <p className="text-danger font-medium mb-4">Не удалось загрузить комнату</p>
+        <button onClick={() => mutate()} className="btn btn-secondary gap-2">
           <RefreshCw className="w-4 h-4" /> Попробовать снова
         </button>
       </div>
@@ -75,31 +72,27 @@ export function RoomClient({
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm">
+    <div className="page-container">
+      <div className="card flex-between mb-6">
         <div className="flex items-start gap-4">
-          <div className="hidden sm:flex items-center justify-center w-12 h-12 rounded-xl bg-blue-600/10 text-blue-600 dark:text-blue-400 shrink-0">
+          <div className="hidden sm:flex items-center justify-center w-12 h-12 rounded-xl bg-primary-soft text-primary shrink-0">
             <Wallet className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{room.name || roomName}</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+            <h1 className="text-2xl font-bold">{room.name || roomName}</h1>
+            <p className="text-small text-muted mt-1">
               {currency} · {room.participants?.length ?? 0} участников · {room.events?.length ?? 0} трат
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {isAdmin && (
-            <span className="text-xs font-semibold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 px-2.5 py-1 rounded-full">
-              Админ
-            </span>
-          )}
+          {isAdmin && <span className="badge badge-success">Админ</span>}
           <ThemeToggle />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
+      <div className="grid-layout">
+        <div className="main-content">
           <ParticipantList participants={room.participants} currency={currency} isLoading={isLoading} />
           <ExpenseHistory
             roomId={roomId}
@@ -113,20 +106,20 @@ export function RoomClient({
         </div>
 
         {isAdmin && (
-          <div className="space-y-4">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
-                <Users className="w-4 h-4 text-slate-500" /> Участники
+          <div className="sidebar">
+            <div className="card">
+              <h3 className="font-semibold mb-3 flex items-center gap-2 text-small">
+                <Users className="w-4 h-4 text-muted" /> Участники
               </h3>
               <AddParticipantForm roomId={roomId} onAdd={() => mutate()} />
             </div>
 
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm space-y-4">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white flex items-center gap-2">
-                <Receipt className="w-4 h-4 text-slate-500" /> Новая трата
+            <div className="card flex-col gap-4 flex">
+              <h3 className="font-semibold flex items-center gap-2 text-small">
+                <Receipt className="w-4 h-4 text-muted" /> Новая трата
               </h3>
               <SharedExpenseForm roomId={roomId} participants={room.participants} editKey={editKey} onAdd={() => mutate()} />
-              <div className="border-t border-slate-100 dark:border-slate-800" />
+              <div className="divider" />
               <IndividualExpenseForm roomId={roomId} participants={room.participants} editKey={editKey} onAdd={() => mutate()} />
             </div>
 

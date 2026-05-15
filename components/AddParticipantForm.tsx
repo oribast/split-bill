@@ -37,14 +37,10 @@ export function AddParticipantForm({ roomId, onAdd }: { roomId: string; onAdd: (
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
-        placeholder="Имя"
-        className="flex-1 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 transition-all"
+        placeholder="Имя нового участника"
+        className="input flex-1"
       />
-      <button
-        type="submit"
-        disabled={loading}
-        className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-3 py-2 text-sm font-medium transition-all active:scale-[0.98] disabled:opacity-50"
-      >
+      <button type="submit" disabled={loading} className="btn btn-primary px-3">
         <UserPlus className="w-4 h-4" />
       </button>
     </form>

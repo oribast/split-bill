@@ -1,7 +1,14 @@
 import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { Toaster } from 'sonner';
 import './globals.css';
+
+const inter = Inter({
+  subsets: ['latin', 'cyrillic'],
+  display: 'swap',
+  variable: '--font-sans',
+});
 
 export const metadata: Metadata = {
   title: 'Split Bill',
@@ -10,12 +17,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="ru" suppressHydrationWarning>
-      <body className="bg-gray-50 text-gray-900 antialiased dark:bg-gray-950 dark:text-white">
-        <ThemeProvider>
-          {children}
-          <Toaster position="top-center" richColors closeButton />
-        </ThemeProvider>
+    <html lang="ru" suppressHydrationWarning className={inter.variable}>
+      <body>
+        <ThemeProvider>{children}</ThemeProvider>
+        <Toaster position="top-center" richColors closeButton />
       </body>
     </html>
   );
