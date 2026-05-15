@@ -23,7 +23,10 @@ export async function middleware(request: NextRequest) {
 
   if (!roomId) return NextResponse.next();
 
-  const ip = request.ip ?? request.headers.get('x-forwarded-for') ?? 'unknown';
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    ?? request.headers.get('x-real-ip')
+    ?? 'unknown';
+
   // const failures = await getFailedAttempts(ip, roomId);
   // if (failures >= 5) {
   //   return NextResponse.json({ error: 'Too many attempts', code: 'rate_limited' }, { status: 429 });
