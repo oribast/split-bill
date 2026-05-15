@@ -1,41 +1,37 @@
-'use client';
+import { notFound } from 'next/navigation';
+import { db } from '@/db';
+import { rooms } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { RoomClient } from '@/components/RoomClient';
 
-import { useParams, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
+type PageProps = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ key?: string }>;
+};
 
-export default function RoomPage() {
-  const { id } = useParams() as { id: string };
-  const searchParams = useSearchParams();
-  const key = searchParams.get('key') || '';
-  const [room, setRoom] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+export default async function RoomPage({ params, searchParams }: PageProps) {
+  const { id } = await params;
+  const { key } = await searchParams;
 
-  useEffect(() => {
-    fetch(`/api/v1/rooms/${id}`, { headers: { 'X-Edit-Key': key } })
-      .then((r) => r.json())
-      .then((data) => {
-        setRoom(data);
-        setLoading(false);
-      });
-  }, [id, key]);
+  const room = await db.query.rooms.findFirst({
+    where: eq(rooms.id, id),
+    columns: { id: true, name: true, currency: true, passwordHash: true },
+  });
 
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center text-gray-500">Загрузка...</div>;
-  }
-
-  if (!room || room.error) {
-    return <div className="min-h-screen flex items-center justify-center text-red-500">Комната не найдена</div>;
+  if (!room) {
+    notFound();
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 p-4 md:p-8">
+    <main className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 md:p-8">
       <div className="max-w-3xl mx-auto">
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">{room.name}</h1>
-          <p className="text-gray-500 text-sm">
-            Валюта: {room.currency} · {room.participants?.length ?? 0} участников
-          </p>
-        </div>
+        <RoomClient
+          roomId={id}
+          initialEditKey={key || ''}
+          hasPassword={!!room.passwordHash}
+          roomName={room.name}
+          currency={room.currency}
+        />
       </div>
     </main>
   );

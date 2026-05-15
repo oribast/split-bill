@@ -1,60 +1,74 @@
-'use client';
-
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { redirect } from 'next/navigation';
+import { createRoom } from '@/lib/repositories/room';
+import { createRoomSchema } from '@/lib/validations';
 
 export default function HomePage() {
-  const router = useRouter();
-  const [name, setName] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  async function createRoomAction(formData: FormData) {
+    'use server';
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    const res = await fetch('/api/v1/rooms', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, password: password || undefined }),
+    const parsed = createRoomSchema.safeParse({
+      name: formData.get('name'),
+      password: formData.get('password') || undefined,
+      currency: formData.get('currency') || 'RUB',
     });
-    const data = await res.json();
-    setLoading(false);
-    if (res.ok) {
-      router.push(`/room/${data.id}?key=${data.editKey}`);
-    } else {
-      alert('Ошибка: ' + (data.error || 'Unknown'));
+
+    if (!parsed.success) {
+      throw new Error('Invalid input');
     }
+
+    const room = await createRoom(parsed.data);
+    redirect(`/room/${room.id}?key=${room.editKey}`);
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-4 bg-gray-50">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-8">
-        <h1 className="text-2xl font-bold mb-6 text-center text-gray-900">Разделение счетов</h1>
-        <form onSubmit={handleSubmit} className="space-y-4">
+    <main className="min-h-screen flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-950">
+      <div className="w-full max-w-md bg-white dark:bg-gray-900 rounded-2xl shadow-lg p-8">
+        <h1 className="text-2xl font-bold mb-6 text-center text-gray-900 dark:text-white">
+          Разделение счетов
+        </h1>
+        <form action={createRoomAction} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1 text-gray-700">Название комнаты</label>
+            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+              Название комнаты
+            </label>
             <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              name="name"
               required
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              maxLength={100}
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1 text-gray-700">Пароль (опционально)</label>
+            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+              Пароль (опционально)
+            </label>
             <input
+              name="password"
               type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              maxLength={100}
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">
+              Валюта
+            </label>
+            <select
+              name="currency"
+              defaultValue="RUB"
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="RUB">RUB</option>
+              <option value="USD">USD</option>
+              <option value="EUR">EUR</option>
+              <option value="KZT">KZT</option>
+            </select>
           </div>
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white rounded-lg py-2 font-medium hover:bg-blue-700 disabled:opacity-50"
+            className="w-full bg-blue-600 text-white rounded-lg py-2 font-medium hover:bg-blue-700"
           >
-            {loading ? 'Создание...' : 'Создать комнату'}
+            Создать комнату
           </button>
         </form>
       </div>
