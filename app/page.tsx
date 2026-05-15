@@ -5,15 +5,15 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { Wallet, Users, Receipt, Loader2, RefreshCw } from 'lucide-react';
 import { storeEditKey, getAuthHeaders } from '@/lib/client-auth';
-import { ParticipantList } from './ParticipantList';
-import { AddParticipantForm } from './AddParticipantForm';
-import { SharedExpenseForm } from './SharedExpenseForm';
-import { IndividualExpenseForm } from './IndividualExpenseForm';
-import { ExpenseHistory } from './ExpenseHistory';
-import { ClearRoomButton } from './ClearRoomButton';
-import { PasswordPrompt } from './PasswordPrompt';
-import { ThemeToggle } from './ThemeToggle';
-import { Skeleton } from './Skeleton';
+import { ParticipantList } from '../components/ParticipantList';
+import { AddParticipantForm } from '../components/AddParticipantForm';
+import { SharedExpenseForm } from '../components/SharedExpenseForm';
+import { IndividualExpenseForm } from '../components/IndividualExpenseForm';
+import { ExpenseHistory } from '../components/ExpenseHistory';
+import { ClearRoomButton } from '../components/ClearRoomButton';
+import { PasswordPrompt } from '../components/PasswordPrompt';
+import { ThemeToggle } from '../components/ThemeToggle';
+import { Skeleton } from '../components/Skeleton';
 
 const fetcher = (url: string, editKey: string) =>
   fetch(url, { headers: getAuthHeaders(editKey) }).then((r) => {
