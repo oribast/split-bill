@@ -6,11 +6,12 @@ import { eq } from 'drizzle-orm';
 import { guardRoom } from '@/lib/api-guard';
 import { createEventWithEntries } from '@/lib/repositories/event';
 import { findIdempotencyKey } from '@/lib/repositories/idempotency';
-import { splitEqual } from '@/lib/split';
+import { splitShared } from '@/lib/split';
 
 const sharedSchema = z.object({
   name: z.string().min(1).max(200),
   totalAmount: z.number().int().min(1).max(10_000_000),
+  payerId: z.string().uuid(),
   participantIds: z.array(z.string().uuid()).min(1),
   createdBy: z.string().uuid().optional(),
 });
@@ -30,7 +31,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     );
   }
 
-  const { name, totalAmount, participantIds, createdBy } = parsed.data;
+  const { name, totalAmount, payerId, participantIds, createdBy } = parsed.data;
 
   const uniqueIds = new Set(participantIds);
   if (uniqueIds.size !== participantIds.length) {
@@ -49,6 +50,13 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   }
 
   const validParticipantIds = new Set(room.participants.map((p) => p.id));
+  if (!validParticipantIds.has(payerId)) {
+    return NextResponse.json(
+      { error: 'Payer not found in room', code: 'invalid_payer' },
+      { status: 400 }
+    );
+  }
+
   for (const pid of participantIds) {
     if (!validParticipantIds.has(pid)) {
       return NextResponse.json(
@@ -66,7 +74,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     }
   }
 
-  const entries = splitEqual(totalAmount, participantIds);
+  const entries = splitShared(payerId, participantIds, totalAmount);
+
   const event = await createEventWithEntries(
     { roomId, name, totalAmount, createdBy, entries },
     idempotencyKey ?? undefined

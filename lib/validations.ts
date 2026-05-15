@@ -13,6 +13,7 @@ export const addParticipantSchema = z.object({
 export const sharedExpenseSchema = z.object({
   name: z.string().min(1, 'Название обязательно').max(200),
   amount: z.coerce.number().min(0.01, 'Сумма должна быть больше 0'),
+  payerId: z.string().min(1, 'Выберите кто платил'),
   participantIds: z.array(z.string()).min(1, 'Выберите хотя бы одного участника'),
 });
 

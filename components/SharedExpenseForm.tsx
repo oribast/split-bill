@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { splitEqual } from '@/lib/split';
+import { splitShared } from '@/lib/split';
 import { sharedExpenseSchema } from '@/lib/validations';
 import { getAuthHeaders } from '@/lib/client-auth';
 
@@ -23,11 +23,14 @@ export function SharedExpenseForm({
 }) {
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
+  const [payerId, setPayerId] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
   const totalAmount = Math.round(parseFloat(amount) * 100);
-  const preview = totalAmount > 0 && selectedIds.length > 0 ? splitEqual(totalAmount, selectedIds) : [];
+  const preview = totalAmount > 0 && payerId && selectedIds.length > 0
+    ? splitShared(payerId, selectedIds, totalAmount)
+    : [];
 
   function toggle(id: string) {
     setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
@@ -39,7 +42,7 @@ export function SharedExpenseForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const parsed = sharedExpenseSchema.safeParse({
-      name, amount: parseFloat(amount), participantIds: selectedIds,
+      name, amount: parseFloat(amount), payerId, participantIds: selectedIds,
     });
     if (!parsed.success) {
       toast.error(parsed.error.errors[0].message);
@@ -56,13 +59,14 @@ export function SharedExpenseForm({
       body: JSON.stringify({
         name: parsed.data.name,
         totalAmount: Math.round(parsed.data.amount * 100),
+        payerId: parsed.data.payerId,
         participantIds: parsed.data.participantIds,
       }),
     });
     setLoading(false);
     if (res.ok) {
       toast.success('Общая трата добавлена');
-      setName(''); setAmount(''); setSelectedIds([]);
+      setName(''); setAmount(''); setPayerId(''); setSelectedIds([]);
       onAdd();
     } else {
       const data = await res.json().catch(() => ({}));
@@ -78,9 +82,17 @@ export function SharedExpenseForm({
           <input type="number" step="0.01" min="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={`0.00 ${currency}`} />
         </div>
         <div className="form-group">
-          <label>Примечание</label>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Например, ужин в ресторане" />
+          <label>Кто платил</label>
+          <select value={payerId} onChange={(e) => setPayerId(e.target.value)} className="input select">
+            <option value="">Выберите плательщика</option>
+            {participants.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
         </div>
+      </div>
+
+      <div className="form-group">
+        <label>Примечание</label>
+        <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Например, общий чек в ресторане" />
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
@@ -112,7 +124,7 @@ export function SharedExpenseForm({
         </div>
       )}
 
-      <button type="submit" className="btn-primary" disabled={loading || selectedIds.length === 0}>
+      <button type="submit" className="btn-primary" disabled={loading || selectedIds.length === 0 || !payerId}>
         {loading ? 'Сохранение...' : `Распределить поровну (${selectedIds.length} чел.)`}
       </button>
     </form>

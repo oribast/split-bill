@@ -83,7 +83,7 @@ export function IndividualExpenseForm({
         </div>
         <div className="form-group">
           <label>Кто платил</label>
-          <select value={payerId} onChange={(e) => setPayerId(e.target.value)}>
+          <select value={payerId} onChange={(e) => setPayerId(e.target.value)} className="input select">
             <option value="">Выберите плательщика</option>
             {participants.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
@@ -116,7 +116,7 @@ export function IndividualExpenseForm({
         </div>
       )}
 
-      <button type="submit" className="btn-primary" disabled={loading || !selectedIds.length}>
+      <button type="submit" className="btn-primary" disabled={loading || !selectedIds.length || !payerId}>
         {loading ? 'Сохранение...' : 'Добавить личную трату'}
       </button>
     </form>
