@@ -1,5 +1,3 @@
--- Создание таблиц для Split Bill
-
 CREATE TABLE IF NOT EXISTS rooms (
     id UUID PRIMARY KEY NOT NULL,
     name TEXT NOT NULL,
@@ -24,8 +22,9 @@ CREATE TABLE IF NOT EXISTS events (
     name TEXT NOT NULL,
     total_amount BIGINT NOT NULL,
     created_by UUID REFERENCES participants(id) ON DELETE SET NULL,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at TIMESTAMPTZ
+    is_reverted BOOLEAN NOT NULL DEFAULT FALSE,
+    reverted_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS event_entries (
@@ -37,6 +36,15 @@ CREATE TABLE IF NOT EXISTS event_entries (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS idempotency_keys (
+    id UUID PRIMARY KEY NOT NULL,
+    room_id UUID NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+    key VARCHAR(36) NOT NULL UNIQUE,
+    event_id UUID REFERENCES events(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    expires_at TIMESTAMPTZ NOT NULL DEFAULT NOW() + INTERVAL '24 hours'
+);
+
 CREATE TABLE IF NOT EXISTS audit_logs (
     id SERIAL PRIMARY KEY,
     room_id UUID REFERENCES rooms(id) ON DELETE SET NULL,
@@ -46,12 +54,11 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Индексы для производительности
-
 CREATE INDEX IF NOT EXISTS idx_participants_room_id ON participants(room_id);
 CREATE INDEX IF NOT EXISTS idx_events_room_id ON events(room_id);
 CREATE INDEX IF NOT EXISTS idx_events_created_by ON events(created_by);
 CREATE INDEX IF NOT EXISTS idx_event_entries_event_id ON event_entries(event_id);
 CREATE INDEX IF NOT EXISTS idx_event_entries_participant_id ON event_entries(participant_id);
+CREATE INDEX IF NOT EXISTS idx_idempotency_keys_room_key ON idempotency_keys(room_id, key);
+CREATE INDEX IF NOT EXISTS idx_idempotency_keys_expires ON idempotency_keys(expires_at);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_room_id ON audit_logs(room_id);
-CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);

@@ -1,4 +1,4 @@
-import { relations } from 'drizzle-orm';
+import { relations, sql } from 'drizzle-orm';
 import {
   pgTable,
   uuid,
@@ -8,6 +8,7 @@ import {
   timestamp,
   jsonb,
   serial,
+  boolean,
 } from 'drizzle-orm/pg-core';
 
 export const rooms = pgTable('rooms', {
@@ -34,8 +35,9 @@ export const events = pgTable('events', {
   name: text('name').notNull(),
   totalAmount: bigint('total_amount', { mode: 'number' }).notNull(),
   createdBy: uuid('created_by').references(() => participants.id, { onDelete: 'set null' }),
+  isReverted: boolean('is_reverted').notNull().default(false),
+  revertedAt: timestamp('reverted_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  deletedAt: timestamp('deleted_at', { withTimezone: true }),
 });
 
 export const eventEntries = pgTable('event_entries', {
@@ -45,6 +47,15 @@ export const eventEntries = pgTable('event_entries', {
   amount: bigint('amount', { mode: 'number' }).notNull(),
   share: bigint('share', { mode: 'number' }).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const idempotencyKeys = pgTable('idempotency_keys', {
+  id: uuid('id').primaryKey().notNull(),
+  roomId: uuid('room_id').notNull().references(() => rooms.id, { onDelete: 'cascade' }),
+  key: varchar('key', { length: 36 }).notNull().unique(),
+  eventId: uuid('event_id').references(() => events.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull().default(sql`now() + interval '24 hours'`),
 });
 
 export const auditLogs = pgTable('audit_logs', {
@@ -64,6 +75,7 @@ export const roomsRelations = relations(rooms, ({ many }) => ({
 export const participantsRelations = relations(participants, ({ one, many }) => ({
   room: one(rooms, { fields: [participants.roomId], references: [rooms.id] }),
   eventEntries: many(eventEntries),
+  createdEvents: many(events, { relationName: 'createdBy' }),
 }));
 
 export const eventsRelations = relations(events, ({ one, many }) => ({
