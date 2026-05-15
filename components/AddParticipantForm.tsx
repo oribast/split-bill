@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { addParticipantSchema } from '@/lib/validations';
 
 export function AddParticipantForm({
@@ -25,32 +26,39 @@ export function AddParticipantForm({
     }
 
     setSubmitting(true);
-    await fetch(`/api/v1/rooms/${roomId}/participants`, {
+    const res = await fetch(`/api/v1/rooms/${roomId}/participants`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(parsed.data),
     });
 
-    setName('');
+    if (res.ok) {
+      toast.success('Участник добавлен');
+      setName('');
+      onAdd();
+    } else {
+      const data = await res.json().catch(() => ({}));
+      toast.error(data.error || 'Ошибка добавления участника');
+    }
+
     setSubmitting(false);
-    onAdd();
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
+    <form onSubmit={handleSubmit} className="flex gap-2 items-start">
       <div className="flex-1">
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Имя участника"
-          className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          placeholder="Имя нового участника"
+          className="w-full rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 py-2.5 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
         />
         {error && <p className="text-xs text-red-600 dark:text-red-400 mt-1">{error}</p>}
       </div>
       <button
         type="submit"
         disabled={submitting}
-        className="bg-emerald-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
+        className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-5 py-2.5 text-sm font-semibold shadow-lg shadow-emerald-600/20 hover:shadow-emerald-600/30 transition-all active:scale-[0.98] disabled:opacity-50"
       >
         Добавить
       </button>
