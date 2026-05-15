@@ -1,6 +1,6 @@
 import { db } from '@/db';
 import { eventEntries, events } from '@/db/schema';
-import { eq, sql, isNull } from 'drizzle-orm';
+import { eq, sql, and } from 'drizzle-orm';
 
 export async function getBalancesByRoomId(roomId: string) {
   const rows = await db
@@ -11,7 +11,7 @@ export async function getBalancesByRoomId(roomId: string) {
     })
     .from(eventEntries)
     .innerJoin(events, eq(eventEntries.eventId, events.id))
-    .where(eq(events.roomId, roomId) && isNull(events.deletedAt))
+    .where(and(eq(events.roomId, roomId), eq(events.isReverted, false)))
     .groupBy(eventEntries.participantId);
 
   return rows;
