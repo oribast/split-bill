@@ -1,6 +1,6 @@
 import { db } from '@/db';
 import { rooms, participants, events, eventEntries, auditLogs } from '@/db/schema';
-import { eq, isNull, inArray } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { hashPassword } from '@/lib/auth';
 import { generateId } from '@/lib/utils';
 
@@ -27,7 +27,7 @@ export async function getRoomById(id: string) {
           entries: true,
           creator: true,
         },
-        where: (eventsTable, { isNull }) => isNull(eventsTable.deletedAt),
+        where: (eventsTable, { eq }) => eq(eventsTable.isReverted, false),
       },
     },
   });
