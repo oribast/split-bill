@@ -1,7 +1,7 @@
 "use client";
 import { IconHistory, IconRollback } from "@/components/Icons";
 import { EventWithRelations, Participant } from "@/lib/types";
-import { fmt, formatDate, parseDescription } from "@/lib/utils";
+import { fmt, formatDate, parseDescription } from "@/lib/room-utils";
 
 interface Props {
   events: EventWithRelations[];
