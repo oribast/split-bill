@@ -7,25 +7,24 @@ import { calculateFinances } from "@/lib/calculations";
 import { Room } from "@/lib/types";
 
 // --- Утилиты ---
-const formatDate = (val: string | Date) => {
-  try {
-    const d = typeof val === "string" ? new Date(val) : val;
-    if (isNaN(d.getTime())) return "—";
-    return d.toLocaleString("ru-RU", {
-      day: "2-digit", month: "2-digit", year: "numeric",
-      hour: "2-digit", minute: "2-digit"
-    });
-  } catch { return "—"; }
+const formatDate = (val: any) => {
+  if (!val) return "—";
+  const d = typeof val === "string" ? new Date(val) : val;
+  if (!d || isNaN(d.getTime())) return "—";
+  return d.toLocaleString("ru-RU", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit"
+  });
 };
 
 const parseDescription = (desc: string) => {
-  // Извлекаем комментарий, если он в конце в скобках и не является списком участников
+  if (!desc) return { main: "", comment: null };
+  // Ищем комментарий в конце в скобках, игнорируя технические "(N чел.: ...)"
   const match = desc.match(/^(.*?)\s*\(([^)]+)\)$/);
   if (!match) return { main: desc, comment: null };
-  const [, main, potentialComment] = match;
-  // Игнорируем технические скобки вроде "(3 чел.: ...)"
-  if (/^\d+\s*чел\.?:/.test(potentialComment)) return { main: desc, comment: null };
-  return { main: main.trim(), comment: potentialComment.trim() };
+  const [, main, potential] = match;
+  if (/^\d+\s*чел\.?:/.test(potential)) return { main: desc, comment: null };
+  return { main: main.trim(), comment: potential.trim() };
 };
 
 const fetcher = async (url: string) => {
@@ -318,10 +317,10 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
   const fmt = (v: number) => (v / 100).toFixed(2) + " ₽";
 
   return (
-    <div className="container">
+    <div className="mx-auto max-w-[1440px] px-4 py-8">
       {/* Header */}
       <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"16px", flexWrap:"wrap", gap:"12px"}}>
-        <h1 style={{marginBottom:0}}>Комната: {roomId}</h1>
+        <h1 style={{marginBottom:0, fontSize:"2rem"}}>Комната: {roomId}</h1>
         <div style={{display:"flex", alignItems:"center", gap:"8px"}}>
           {saving && <span style={{color:"var(--text-muted)", fontSize:"0.875rem"}}>Сохранение...</span>}
           <button className="theme-toggle btn-small" onClick={toggleTheme} title={theme==="light"?"Тёмная тема":"Светлая тема"}>
@@ -356,12 +355,12 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
         </div>
       )}
 
-      {/* Main Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      {/* Layout: Sidebar + Main */}
+      <div className="flex flex-col lg:flex-row gap-6">
         
         {/* LEFT SIDEBAR: Участники + Балансы */}
-        <aside className="lg:col-span-4">
-          <div className="card">
+        <aside className="w-full lg:w-96 lg:min-w-[360px] flex-shrink-0">
+          <div className="card" style={{position:"sticky", top:"20px"}}>
             <h2>Участники</h2>
             {!isUnlocked ? null : (
               <div className="form-row" style={{marginBottom:"16px"}}>
@@ -389,7 +388,7 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
                           <span style={{flex:1, fontWeight:500}}>{p.name}</span>
                         )}
                         {!isUnlocked ? null : (
-                          <button className="btn-secondary btn-small" onClick={()=>removeParticipant(p.id)} style={{marginLeft:"8px"}}>Удалить</button>
+                          <button className="btn-secondary btn-small" onClick={()=>removeParticipant(p.id)} style={{marginLeft:"8px"}}>✕</button>
                         )}
                       </div>
                       <div style={{display:"flex", justifyContent:"space-between", alignItems:"baseline"}}>
@@ -407,7 +406,7 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
         </aside>
 
         {/* RIGHT MAIN: Формы, Итого, История */}
-        <main className="lg:col-span-8 space-y-6">
+        <main className="flex-1 min-w-0 space-y-6">
           {!isUnlocked || !room || room.participants.length===0 ? null : (
             <>
               <div className="card">
@@ -481,13 +480,14 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
             ) : (
               <div className="logs-modern">
                 {room.events.map(log=>{
-                  const { main, comment } = parseDescription(log.description);
+                  const { main, comment } = parseDescription(log.description || "");
+                  const dateStr = formatDate(log.createdAt);
                   return (
                     <div key={log.id} className={`log-card ${log.type} ${log.isReverted?"reverted":""}`}>
                       <div className="log-card-header">
                         <div className="log-card-meta">
                           <span className={`log-badge ${log.type}`}>{log.type==="individual"?"Индивидуальная":"Групповая"}</span>
-                          <span className="log-date">{formatDate(log.createdAt)}{log.isReverted && <span className="reverted-label"> · Отменено</span>}</span>
+                          <span className="log-date" style={{fontWeight:500}}>{dateStr}{log.isReverted && <span className="reverted-label"> · Отменено</span>}</span>
                         </div>
                         {isUnlocked && !log.isReverted && <button className="btn-secondary btn-small" onClick={()=>handleRollback(log.id)}>Откатить</button>}
                       </div>
