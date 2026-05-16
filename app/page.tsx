@@ -54,10 +54,12 @@ export default function Home() {
     setLoading(true);
     setError('');
     try {
+      // Если похож на UUID → сразу переходим
       if (/^[0-9a-f-]{36}$/i.test(q)) {
         router.push(`/room/${q}`);
         return;
       }
+      // Иначе ищем по короткому коду
       const res = await fetch(`/api/v1/rooms/lookup?q=${encodeURIComponent(q)}`);
       if (!res.ok) throw new Error('not_found');
       const data = await res.json();
@@ -77,6 +79,7 @@ export default function Home() {
     if (created) navigator.clipboard.writeText(created.code).then(() => toast.success('Код скопирован'));
   };
 
+  // ✅ Экран успешного создания
   if (created) {
     return (
       <div className="container relative" style={{ textAlign: 'center', paddingTop: '80px' }}>
@@ -124,6 +127,7 @@ export default function Home() {
     );
   }
 
+  // ✅ Главная форма
   return (
     <div className="container relative" style={{ textAlign: 'center', paddingTop: '80px' }}>
       {mounted && (
@@ -148,43 +152,82 @@ export default function Home() {
             value={roomName}
             onChange={(e) => setRoomName(e.target.value)}
             placeholder="Название комнаты (необязательно)"
-            style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-input)', marginBottom: '12px', color: 'var(--text-primary)' }}
+            style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)', marginBottom: '14px', outline: 'none' }}
           />
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', justifyContent: 'center', color: 'var(--text-secondary)' }}>
-            <input 
-              type="checkbox" 
-              checked={usePassword} 
-              onChange={(e) => {
-                setUsePassword(e.target.checked);
-                if (!e.target.checked) { setPassword(''); setShowPassword(false); }
+          
+          {/* 🔐 Блок защиты паролем (новый дизайн) */}
+          <div style={{
+            border: `1px solid var(--border)`,
+            borderRadius: '12px',
+            padding: '14px',
+            background: 'var(--bg-secondary, rgba(0,0,0,0.03))',
+            transition: 'all 0.2s ease'
+          }}>
+            <div 
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
+              onClick={() => {
+                setUsePassword(!usePassword);
+                if (usePassword) { setPassword(''); setShowPassword(false); }
               }}
-              style={{ accentColor: 'var(--accent-primary, #3b82f6)', width: '16px', height: '16px', cursor: 'pointer' }}
-            />
-            <IconLock className="w-4 h-4" /> Защитить паролем
-          </label>
-          {usePassword && (
-            <div style={{ marginTop: '12px', position: 'relative' }}>
-              <IconLock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Придумайте пароль"
-                style={{ width: '100%', paddingLeft: '36px', paddingRight: '36px', paddingBlock: '10px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)' }}
-              />
-              <button
-                type="button"
-                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted hover:text-foreground transition"
-                onClick={() => setShowPassword(!showPassword)}
-                title={showPassword ? 'Скрыть' : 'Показать'}
-              >
-                {showPassword ? <IconEyeOff className="w-4 h-4" /> : <IconEye className="w-4 h-4" />}
-              </button>
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', fontWeight: 500, color: 'var(--text-primary)' }}>
+                <IconLock className="w-4 h-4" /> Защитить паролем
+              </span>
+              
+              {/* Toggle Switch */}
+              <div style={{
+                position: 'relative', width: '40px', height: '22px', borderRadius: '11px',
+                background: usePassword ? 'var(--accent-primary, #3b82f6)' : 'var(--border, #cbd5e1)',
+                transition: 'background 0.2s', flexShrink: 0
+              }}>
+                <div style={{
+                  position: 'absolute', top: '2px', left: usePassword ? '20px' : '2px',
+                  width: '18px', height: '18px', borderRadius: '50%', background: '#fff',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.15)', transition: 'left 0.2s'
+                }} />
+              </div>
             </div>
-          )}
+
+            {usePassword && (
+              <div style={{ marginTop: '12px', position: 'relative' }}>
+                <IconLock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Придумайте пароль"
+                  style={{
+                    width: '100%', paddingLeft: '36px', paddingRight: '36px', paddingBlock: '10px',
+                    borderRadius: '8px', border: `1px solid var(--border)`, background: 'var(--bg-input)',
+                    color: 'var(--text-primary)', fontSize: '0.9rem', outline: 'none',
+                    transition: 'border-color 0.2s, box-shadow 0.2s'
+                  }}
+                />
+                <button 
+                  type="button" 
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{ 
+                    position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', 
+                    padding: '4px', background: 'transparent', border: 'none', cursor: 'pointer', 
+                    color: 'var(--text-muted)', display: 'flex', borderRadius: '4px' 
+                  }}
+                  title={showPassword ? 'Скрыть' : 'Показать'}
+                >
+                  {showPassword ? <IconEyeOff className="w-4 h-4" /> : <IconEye className="w-4 h-4" />}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
+
         {error && <p style={{ color: 'var(--accent-danger)', marginBottom: '12px', fontSize: '0.875rem' }}>{error}</p>}
-        <button className="btn-primary" onClick={createRoom} disabled={loading || (usePassword && !password.trim())} style={{ width: '100%', padding: '14px', fontSize: '1.125rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+        
+        <button 
+          className="btn-primary" 
+          onClick={createRoom} 
+          disabled={loading || (usePassword && !password.trim())} 
+          style={{ width: '100%', padding: '14px', fontSize: '1.125rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+        >
           <IconPlus className="w-5 h-5" /> {loading ? 'Создание...' : 'Создать комнату'}
         </button>
       </div>
@@ -200,7 +243,7 @@ export default function Home() {
             onChange={(e) => setJoinQuery(e.target.value)}
             placeholder="ID или код приглашения"
             onKeyDown={(e) => e.key === 'Enter' && joinRoom()}
-            style={{ flex: 1, padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)' }}
+            style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)', outline: 'none' }}
           />
           <button className="btn-primary" onClick={joinRoom} disabled={loading}>Войти</button>
         </div>
