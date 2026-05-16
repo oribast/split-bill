@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+:root, [data-theme="light"] {
   --bg-body: #f5f7fa;
   --bg-card: #ffffff;
   --text-primary: #1a202c;
