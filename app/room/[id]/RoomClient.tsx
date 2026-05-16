@@ -13,12 +13,15 @@ export interface Room {
   events: Event[];
 }
 
-// Fetcher работает ТОЛЬКО в браузере (через useEffect ниже)
-const browserFetcher = async (url: string) => {
-  const res = await fetch(url); // Относительный URL — работает в браузере
+// Безопасный fetch: работает ТОЛЬКО в браузере
+const safeFetch = async (url: string, options?: RequestInit) => {
+  if (typeof window === 'undefined') {
+    throw new Error('Server-side fetch is disabled');
+  }
+  const res = await fetch(url, options);
   if (!res.ok) {
     const error = await res.json().catch(() => ({}));
-    throw new Error(error.error || 'Request failed');
+    throw new Error(error.error || `Request failed: ${res.status}`);
   }
   return res.json();
 };
@@ -30,15 +33,15 @@ export default function RoomClient({
   initialData: Room;
   roomId: string;
 }) {
-  // Используем SWR только для клиентских обновлений
-  const { data: roomData, mutate, error: swrError } = useSWR<{ room: Room }>(
-    // Ключ кэша — просто строка, не вызываем fetch здесь
-    `room-${roomId}`,
-    { 
+  // SWR настроен так, чтобы НЕ делать запросов на сервере
+  const { data: roomData, mutate } = useSWR<{ room: Room }>(
+    `/api/v1/rooms/${roomId}`,
+    () => safeFetch(`/api/v1/rooms/${roomId}`),
+    {
       fallbackData: { room: initialData },
-      // Отключаем автоматические ревалидации на сервере
       revalidateOnFocus: false,
       revalidateOnReconnect: false,
+      refreshInterval: typeof window !== 'undefined' ? 5000 : 0, // Только в браузере
     }
   );
 
@@ -46,9 +49,7 @@ export default function RoomClient({
   const [editKey, setEditKey] = useState<string | null>(null);
   const [myParticipantKey, setMyParticipantKey] = useState<string | null>(null);
   const [formError, setFormError] = useState<string>('');
-  const [isClient, setIsClient] = useState(false);
 
-  // Forms State
   const [newParticipantName, setNewParticipantName] = useState('');
   const [expenseDesc, setExpenseDesc] = useState('');
   const [expenseAmount, setExpenseAmount] = useState('');
@@ -57,56 +58,45 @@ export default function RoomClient({
   const [targetParticipant, setTargetParticipant] = useState('');
   const [expenseType, setExpenseType] = useState<'shared' | 'individual'>('shared');
 
-  // Помечаем, что компонент смонтирован в браузере
   useEffect(() => {
-    setIsClient(true);
     const storedEditKey = sessionStorage.getItem(`editKey_${roomId}`);
     const storedPartKey = sessionStorage.getItem(`participantKey_${roomId}`);
     if (storedEditKey) setEditKey(storedEditKey);
     if (storedPartKey) setMyParticipantKey(storedPartKey);
   }, [roomId]);
 
-  // Ручная функция обновления данных — работает только в браузере
-  const refreshRoom = useCallback(async () => {
-    if (!isClient) return;
-    try {
-      const res = await fetch(`/api/v1/rooms/${roomId}`);
-      if (res.ok) {
-        const data = await res.json();
-        mutate({ room: data.room }, { revalidate: false });
-      }
-    } catch (err) {
-      console.error('Refresh error:', err);
-    }
-  }, [isClient, roomId, mutate]);
-
-  const getHeaders = () => {
+  const getHeaders = (): HeadersInit => {
     const h: HeadersInit = { 'Content-Type': 'application/json' };
     if (editKey) h['x-edit-key'] = editKey;
     if (myParticipantKey) h['x-participant-key'] = myParticipantKey;
     return h;
   };
 
+  const refreshData = useCallback(async () => {
+    if (typeof window === 'undefined') return;
+    try {
+      const data = await safeFetch(`/api/v1/rooms/${roomId}`);
+      mutate({ room: data.room }, { revalidate: false });
+    } catch (err) {
+      console.warn('Auto-refresh failed:', err);
+    }
+  }, [roomId, mutate]);
+
   const addParticipant = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
-    if (!newParticipantName.trim() || !isClient) return;
+    if (!newParticipantName.trim() || typeof window === 'undefined') return;
     
     try {
-      const res = await fetch(`/api/v1/rooms/${roomId}/participants`, {
+      const data = await safeFetch(`/api/v1/rooms/${roomId}/participants`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ name: newParticipantName }),
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to add participant');
-      }
-      const data = await res.json();
       sessionStorage.setItem(`participantKey_${roomId}`, data.participantKey);
       setMyParticipantKey(data.participantKey);
       setNewParticipantName('');
-      refreshRoom();
+      refreshData();
     } catch (err: any) {
       setFormError(err.message || 'Ошибка добавления участника');
     }
@@ -115,7 +105,7 @@ export default function RoomClient({
   const addExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
-    if (!isClient) return;
+    if (typeof window === 'undefined') return;
     
     const amountValue = parseFloat(expenseAmount);
     if (!amountValue || amountValue <= 0 || !selectedPayer) {
@@ -146,54 +136,32 @@ export default function RoomClient({
     }
 
     try {
-      const res = await fetch(`/api/v1/rooms/${roomId}/expenses/${endpoint}`, {
+      await safeFetch(`/api/v1/rooms/${roomId}/expenses/${endpoint}`, {
         method: 'POST',
         headers: { ...getHeaders(), 'X-Idempotency-Key': crypto.randomUUID() },
         body: JSON.stringify(body),
       });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.error || 'Failed to create expense');
-      }
       setExpenseDesc('');
       setExpenseAmount('');
       setSelectedParticipants([]);
       setTargetParticipant('');
-      refreshRoom();
+      refreshData();
     } catch (err: any) {
       setFormError(err.message || 'Ошибка создания траты');
     }
   };
 
   const revertEvent = async (eventId: string) => {
-    if (!confirm('Отменить эту трату?') || !isClient) return;
+    if (!confirm('Отменить эту трату?') || typeof window === 'undefined') return;
     try {
-      const res = await fetch(`/api/v1/rooms/${roomId}/events/${eventId}`, {
-        method: 'POST',
-        headers: getHeaders(),
-      });
-      if (!res.ok) throw new Error('Failed to revert');
-      refreshRoom();
+      await safeFetch(`/api/v1/rooms/${roomId}/events/${eventId}`, { method: 'POST', headers: getHeaders() });
+      refreshData();
     } catch (err) {
       alert('Не удалось отменить трату');
     }
   };
 
-  // Пока не смонтировался в браузере — показываем скелетон
-  if (!isClient) {
-    return (
-      <div className="min-h-screen p-4 bg-gray-50 dark:bg-gray-900 animate-pulse">
-        <div className="h-8 w-48 bg-gray-200 dark:bg-gray-700 rounded mb-8"></div>
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="h-64 bg-gray-200 dark:bg-gray-700 rounded-xl"></div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (!room) return <div className="p-10">Loading...</div>;
+  if (!room) return <div className="p-10 animate-pulse">Загрузка...</div>;
 
   const balances: BalanceMap = calculateBalances(room.participants, room.events);
 
@@ -204,7 +172,7 @@ export default function RoomClient({
           <h1 className="text-3xl font-bold">{room.name}</h1>
           <p className="text-sm text-gray-500">ID: {room.id}</p>
         </div>
-        <button onClick={refreshRoom} className="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded text-sm">
+        <button onClick={refreshData} className="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-600">
           Обновить
         </button>
       </header>

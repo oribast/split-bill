@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { events, eventEntries, idempotencyKeys, participants } from '@/db/schema';
-import { eq, and, inArray, sql } from 'drizzle-orm';
+import { eq, and, inArray } from 'drizzle-orm';
 import { getAuthContext } from '@/lib/auth';
 import { splitAmount } from '@/lib/split';
 import { z } from 'zod';
-import crypto from 'crypto';
 
 const sharedExpenseSchema = z.object({
   description: z.string().min(1).max(255),
@@ -18,8 +17,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   const roomId = params.id;
   const { auth, response } = await getAuthContext(roomId);
   if (response) return response;
-  
-  // Только участники могут создавать траты
   if (!auth) return response!; 
 
   const idempotencyKey = req.headers.get('x-idempotency-key');
@@ -28,7 +25,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     const json = await req.json();
     const { description, amount, payerId, participantIds } = sharedExpenseSchema.parse(json);
 
-    // Валидация: все ID принадлежат комнате
+    // Валидация
     const validParticipants = await db.query.participants.findMany({
       where: and(
         eq(participants.roomId, roomId),
@@ -48,42 +45,37 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         where: eq(idempotencyKeys.key, idempotencyKey)
       });
       if (existing) {
-        // Возвращаем существующий eventId или просто 200 OK
         return NextResponse.json({ success: true, eventId: existing.eventId, idempotent: true });
       }
     }
 
     const distribution = splitAmount(amount, participantIds);
 
-    // Транзакция
-    const newEvent = await db.transaction(async (tx) => {
-      const [event] = await tx.insert(events).values({
-        roomId,
-        description,
-        amount,
-        type: 'shared',
-        payerId,
-        isReverted: false,
-      }).returning();
+    // ✅ Убрали transaction, выполняем последовательно
+    const [newEvent] = await db.insert(events).values({
+      roomId,
+      description,
+      amount,
+      type: 'shared',
+      payerId,
+      isReverted: false,
+    }).returning();
 
-      const entries = Object.entries(distribution).map(([pid, amt]) => ({
-        eventId: event.id,
-        participantId: pid,
-        amount: amt,
-      }));
+    const entries = Object.entries(distribution).map(([pid, amt]) => ({
+      eventId: newEvent.id,
+      participantId: pid,
+      amount: amt,
+    }));
 
-      await tx.insert(eventEntries).values(entries);
+    await db.insert(eventEntries).values(entries);
 
-      if (idempotencyKey) {
-        await tx.insert(idempotencyKeys).values({
-          key: idempotencyKey,
-          eventId: event.id,
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        });
-      }
-
-      return event;
-    });
+    if (idempotencyKey) {
+      await db.insert(idempotencyKeys).values({
+        key: idempotencyKey,
+        eventId: newEvent.id,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      });
+    }
 
     return NextResponse.json({ success: true, eventId: newEvent.id }, { status: 201 });
 
@@ -91,7 +83,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     if (e instanceof z.ZodError) {
       return NextResponse.json({ error: e.errors }, { status: 400 });
     }
-    console.error(e);
+    console.error('Shared expense error:', e);
     return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
   }
 }

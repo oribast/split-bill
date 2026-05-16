@@ -48,34 +48,30 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       }
     }
 
-    const newEvent = await db.transaction(async (tx) => {
-      const [event] = await tx.insert(events).values({
-        roomId,
-        description,
-        amount,
-        type: 'individual',
-        payerId,
-        targetParticipantId,
-        isReverted: false,
-      }).returning();
+    // ✅ Убрали transaction, выполняем последовательно
+    const [newEvent] = await db.insert(events).values({
+      roomId,
+      description,
+      amount,
+      type: 'individual',
+      payerId,
+      targetParticipantId,
+      isReverted: false,
+    }).returning();
 
-      // Для индивидуальной траты запись одна: должник должен всю сумму
-      await tx.insert(eventEntries).values({
-        eventId: event.id,
-        participantId: targetParticipantId,
-        amount: amount,
-      });
-
-      if (idempotencyKey) {
-        await tx.insert(idempotencyKeys).values({
-          key: idempotencyKey,
-          eventId: event.id,
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        });
-      }
-
-      return event;
+    await db.insert(eventEntries).values({
+      eventId: newEvent.id,
+      participantId: targetParticipantId,
+      amount: amount,
     });
+
+    if (idempotencyKey) {
+      await db.insert(idempotencyKeys).values({
+        key: idempotencyKey,
+        eventId: newEvent.id,
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      });
+    }
 
     return NextResponse.json({ success: true, eventId: newEvent.id }, { status: 201 });
 
@@ -83,7 +79,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     if (e instanceof z.ZodError) {
       return NextResponse.json({ error: e.errors }, { status: 400 });
     }
-    console.error(e);
+    console.error('Individual expense error:', e);
     return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
   }
 }
