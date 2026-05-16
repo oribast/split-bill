@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Participant } from "@/lib/types";
 import { Finances } from "@/lib/calculations";
-import { IconTrash, IconPlus, IconCheck, IconX, IconEdit } from "@/components/Icons";
+import { IconTrash, IconPlus, IconCheck, IconX, IconEdit, IconUsers } from "@/components/Icons";
 
 interface Props {
   participants: Participant[];
@@ -52,7 +52,9 @@ export default function ParticipantsSidebar({
   return (
     <aside className="w-full lg:w-80 flex-shrink-0">
       <div className="card p-4 space-y-4">
-        <h2 className="text-lg font-semibold flex items-center gap-2">👥 Участники</h2>
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <IconUsers className="w-5 h-5" /> Участники
+        </h2>
 
         <div className="space-y-2">
           {participants.length === 0 && (

@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import toast from "react-hot-toast";
 import { calculateFinances, Finances } from "@/lib/calculations";
@@ -34,6 +34,7 @@ const fetcher = async (url: string) => {
 
 export default function RoomClient({ initialData, roomId }: { initialData: RoomWithRelations; roomId: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: room, mutate, isLoading, error } = useSWR<RoomWithRelations>(`/api/v1/rooms/${roomId}`, fetcher, {
     fallbackData: initialData,
     revalidateOnFocus: false,
@@ -57,6 +58,22 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
   const [sharedNote, setSharedNote] = useState("");
   const [sharedPayerId, setSharedPayerId] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const keyFromUrl = searchParams.get('editKey');
+    if (keyFromUrl) {
+      sessionStorage.setItem(`editKey_${roomId}`, keyFromUrl);
+      
+      
+      const url = new URL(window.location.href);
+      url.searchParams.delete('editKey');
+      window.history.replaceState({}, '', url.toString());
+      
+      toast.success('Ключ доступа применён');
+      mutate(); 
+    }
+  }, [searchParams, roomId, mutate]);
 
   useEffect(() => {
     if (!room) return;
@@ -230,7 +247,7 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
     <div className="mx-auto max-w-6xl px-3 py-5">
       <RoomHeader 
         roomId={roomId} 
-        roomName={room?.name || `Комната ${roomId.slice(0, 6)}`} // ✅ Фоллбэк, если имя не загрузилось
+        roomName={room?.name || `Комната ${roomId.slice(0, 6)}`}
         saving={saving} 
         theme={theme} 
         toggleTheme={toggleTheme} 

@@ -11,6 +11,7 @@ export const rooms = pgTable('rooms', {
   editKey: uuid('edit_key').notNull().unique(),
   passwordHash: varchar('password_hash', { length: 255 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+  inviteCode: varchar('invite_code', { length: 8 }).unique().notNull(),
 });
 
 export const participants = pgTable('participants', {
