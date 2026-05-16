@@ -61,20 +61,26 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const keyFromUrl = searchParams.get('editKey');
-    if (keyFromUrl) {
-      sessionStorage.setItem(`editKey_${roomId}`, keyFromUrl);
-      
-      
-      const url = new URL(window.location.href);
-      url.searchParams.delete('editKey');
-      window.history.replaceState({}, '', url.toString());
-      
-      toast.success('Ключ доступа применён');
-      mutate(); 
+    if (typeof window === "undefined" || !room) return;
+    const hasEditKey = !!localStorage.getItem(`editKey_${roomId}`);
+    const hasPassword = !!localStorage.getItem(`password_${roomId}`);
+    const roomProtected = !!room.passwordHash;
+
+    setIsProtected(roomProtected);
+
+    if (roomProtected) {
+      if (hasEditKey || hasPassword) {
+        setIsUnlocked(true);
+        setShowUnlockForm(false);
+      } else {
+        setIsUnlocked(false);
+        setShowUnlockForm(true);
+      }
+    } else {
+      setIsUnlocked(true);
+      setShowUnlockForm(false);
     }
-  }, [searchParams, roomId, mutate]);
+  }, [room, roomId]);
 
   useEffect(() => {
     if (!room) return;
@@ -91,8 +97,8 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
 
   const getHeaders = () => {
     const h: HeadersInit = { "Content-Type": "application/json" };
-    const ek = typeof window !== "undefined" ? localStorage.getItem(`editKey_${roomId}`) : null;
-    const pw = typeof window !== "undefined" ? localStorage.getItem(`password_${roomId}`) : null;
+    const ek = localStorage.getItem(`editKey_${roomId}`);
+    const pw = localStorage.getItem(`password_${roomId}`);
     if (ek) h["x-edit-key"] = ek;
     if (pw) h["Authorization"] = `Basic ${pw}`;
     return h;
@@ -129,9 +135,12 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
       const authString = btoa(`admin:${unlockPassword.trim()}`);
       const res = await fetch(`/api/v1/rooms/${roomId}`, { headers: { Authorization: `Basic ${authString}` } });
       
-      if (res.status === 200) {
+      if (res.ok) {
         localStorage.setItem(`password_${roomId}`, authString);
-        setIsUnlocked(true); setShowUnlockForm(false); setUnlockPassword(""); setShowUnlockPwd(false);
+        setIsUnlocked(true);
+        setShowUnlockForm(false);
+        setUnlockPassword("");
+        setShowUnlockPwd(false);
         toast.success("Комната разблокирована. Вам доступны права администратора.");
         mutate();
       } else if (res.status === 401 || res.status === 403) {
@@ -147,10 +156,13 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
   };
 
   const lockRoom = () => {
-    if (window.confirm("Заблокировать редактирование? Вы потеряете права администратора до повторного ввода ключа или пароля.")) {
+    if (window.confirm("Заблокировать редактирование?")) {
       localStorage.removeItem(`password_${roomId}`);
       localStorage.removeItem(`editKey_${roomId}`);
-      setIsUnlocked(false); setShowUnlockForm(true); setUnlockPassword(""); setUnlockError("");
+      setIsUnlocked(false);
+      setShowUnlockForm(true);
+      setUnlockPassword("");
+      setUnlockError("");
       toast("Редактирование заблокировано", { icon: "🔒" });
       mutate();
     }
@@ -283,7 +295,9 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
         copyLink={copyLink} 
       />
 
-      {room?.inviteCode && <RoomAccessPanel roomId={roomId} inviteCode={room.inviteCode} />}
+      {room?.inviteCode && (
+        <RoomAccessPanel roomId={roomId} inviteCode={room.inviteCode} isAdmin={isUnlocked} />
+      )}
       
       {isProtected && !isUnlocked && showUnlockForm && (
         <UnlockForm 

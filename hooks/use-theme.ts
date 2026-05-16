@@ -7,7 +7,8 @@ export function useTheme() {
 
   useEffect(() => {
     setMounted(true);
-    const stored = localStorage.getItem('split-bill-theme');
+    
+    const stored = localStorage.getItem('theme') || localStorage.getItem('split-bill-theme');
     if (stored === 'dark' || stored === 'light') {
       setTheme(stored);
     } else {
@@ -19,10 +20,11 @@ export function useTheme() {
   useEffect(() => {
     if (!mounted) return;
     document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('split-bill-theme', theme);
+    localStorage.setItem('theme', theme); 
+    
+    if (localStorage.getItem('split-bill-theme')) localStorage.removeItem('split-bill-theme');
   }, [theme, mounted]);
 
   const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
-
   return { theme, toggleTheme, mounted };
 }
