@@ -27,6 +27,5 @@ export default async function RoomPage({ params }: { params: { id: string } }) {
   const room = await getRoom(params.id);
   if (!room) notFound();
 
-  // Передаём данные напрямую в клиентский компонент
   return <RoomClient initialData={room} roomId={params.id} />;
 }

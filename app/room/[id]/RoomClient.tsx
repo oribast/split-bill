@@ -3,14 +3,19 @@ import { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { calculateBalances, Participant, Event, BalanceMap } from '@/lib/calculations';
 
-// Интерфейс для данных, возвращаемых API
+// Интерфейс для Room, совместимый с тем, что возвращает Drizzle + API
+export interface Room {
+  id: string;
+  name: string;
+  editKey?: string;
+  passwordHash?: string | null;
+  createdAt?: Date | string;
+  participants: Participant[];
+  events: Event[];
+}
+
 interface RoomData {
-  room: {
-    id: string;
-    name: string;
-    participants: Participant[];
-    events: Event[];
-  };
+  room: Room;
 }
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
@@ -19,7 +24,7 @@ export default function RoomClient({
   initialData,
   roomId,
 }: {
-  initialData: RoomData['room'];
+  initialData: Room; // <-- Принимаем напрямую Room, а не обёртку
   roomId: string;
 }) {
   const { data: roomData, mutate } = useSWR<RoomData>(
@@ -27,11 +32,12 @@ export default function RoomClient({
     fetcher,
     {
       fallbackData: { room: initialData },
-      refreshInterval: 5000, // Автообновление каждые 5 сек
+      refreshInterval: 5000,
     }
   );
 
-  const room = roomData?.room;
+  // roomData?.room или initialData, если ещё не загрузилось
+  const room = roomData?.room || initialData;
   const [editKey, setEditKey] = useState<string | null>(null);
   const [myParticipantKey, setMyParticipantKey] = useState<string | null>(null);
 

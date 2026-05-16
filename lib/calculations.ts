@@ -12,12 +12,14 @@ export interface Event {
   id: string; 
   description: string; 
   amount: number; 
-  type: string; 
+  type: 'shared' | 'individual'; 
   payerId: string;
-  payer?: { name: string }; 
+  payer?: { id: string; name: string } | null; 
+  targetParticipant?: { id: string; name: string } | null;
   isReverted: boolean;
   entries: EventEntry[]; 
-  createdAt: string;
+  createdAt: Date | string; // <-- Исправлено: принимаем и Date, и string
+  revertedAt?: Date | string | null;
 }
 
 export interface BalanceMap {
