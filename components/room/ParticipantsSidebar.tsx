@@ -122,17 +122,19 @@ export default function ParticipantsSidebar({
           })}
         </div>
 
-        {/* Форма добавления */}
         {isUnlocked && (
-          <div className="flex gap-2 pt-2 border-t border-border">
+          <div className="flex items-center gap-2 pt-2 border-t border-border w-full">
             <input
               value={newName}
               onChange={e => setNewName(e.target.value)}
               onKeyDown={e => e.key === "Enter" && addParticipant()}
               placeholder="Имя участника"
-              className="flex-1 px-3 py-2 text-sm rounded border bg-background outline-none"
+              className="flex-1 min-w-0 px-3 py-2 text-sm rounded border bg-background outline-none"
             />
-            <button onClick={addParticipant} className="btn-primary px-3 py-2 flex items-center gap-1 whitespace-nowrap">
+            <button 
+              onClick={addParticipant} 
+              className="btn-primary px-3 py-2 flex items-center gap-1 whitespace-nowrap flex-shrink-0"
+            >
               <IconPlus className="w-4 h-4" /> Добавить
             </button>
           </div>

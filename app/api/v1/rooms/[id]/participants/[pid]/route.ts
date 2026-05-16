@@ -5,58 +5,53 @@ import { eq, and } from 'drizzle-orm';
 import { getAuthContext } from '@/lib/auth';
 import { z } from 'zod';
 
-const updateParticipantSchema = z.object({
-  name: z.string().min(1).max(255),
-});
+const updateSchema = z.object({ name: z.string().min(1).max(255) });
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string; pid: string }> }) {
-  const { id: roomId, pid: participantId } = await params;
-  
-  const { auth, response } = await getAuthContext(roomId);
+  const { id: roomId, pid } = await params;
+  const { role, participantId, response } = await getAuthContext(roomId, req);
   if (response) return response;
 
-  if (auth?.role !== 'admin' && !(auth?.role === 'participant' && auth.participantId === participantId)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  // Доступ: админ ИЛИ сам участник (через X-Participant-Key)
+  if (role !== 'admin' && !(role === 'participant' && participantId === pid)) {
+    return NextResponse.json({ error: 'Доступ запрещён' }, { status: 403 });
   }
 
   try {
     const json = await req.json();
-    const { name } = updateParticipantSchema.parse(json);
+    const { name } = updateSchema.parse(json);
 
     await db.update(participants)
       .set({ name })
-      .where(and(eq(participants.id, participantId), eq(participants.roomId, roomId)));
+      .where(and(eq(participants.roomId, roomId), eq(participants.id, pid)));
 
     return NextResponse.json({ success: true });
   } catch (e) {
     if (e instanceof z.ZodError) {
       return NextResponse.json({ error: e.errors }, { status: 400 });
     }
-    return NextResponse.json({ error: 'Internal Error' }, { status: 500 });
+    return NextResponse.json({ error: 'Ошибка сервера' }, { status: 500 });
   }
 }
 
-export async function DELETE(
-  _request: Request,
-  { params }: { params: Promise<{ id: string; pid: string }> }
-) {
-  const { id: roomId, pid: participantId } = await params;
-
-  const { auth, response } = await getAuthContext(roomId);
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string; pid: string }> }) {
+  const { id: roomId, pid } = await params;
+  const { role, response } = await getAuthContext(roomId, req);
   if (response) return response;
-  if (auth?.role !== 'admin') {
-    return NextResponse.json({ error: 'Только создатель комнаты может удалять участников' }, { status: 403 });
+
+  if (role !== 'admin') {
+    return NextResponse.json({ error: 'Только создатель может удалять участников' }, { status: 403 });
+  }
+
+  // ✅ Защита: нельзя удалить последнего участника
+  const count = await db.$count(participants, eq(participants.roomId, roomId));
+  if (count <= 1) {
+    return NextResponse.json({ error: 'last_participant' }, { status: 409 });
   }
 
   try {
-    const deleted = await db
-      .delete(participants)
-      .where(
-        and(
-          eq(participants.roomId, roomId),
-          eq(participants.id, participantId)
-        )
-      )
+    const deleted = await db.delete(participants)
+      .where(and(eq(participants.roomId, roomId), eq(participants.id, pid)))
       .returning({ id: participants.id });
 
     if (deleted.length === 0) {
@@ -66,9 +61,6 @@ export async function DELETE(
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('❌ Ошибка удаления участника:', error);
-    return NextResponse.json(
-      { error: 'Не удалось удалить участника' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Не удалось удалить участника' }, { status: 500 });
   }
 }

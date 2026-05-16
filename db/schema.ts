@@ -1,5 +1,5 @@
-import { pgTable, uuid, varchar, bigint, timestamp, boolean } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm';
+import { pgTable, uuid, varchar, bigint, timestamp, boolean, jsonb } from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm'
 
 // Вспомогательная функция для UUID с автогенерацией
 // Важно: uuid() требует имя колонки!
@@ -68,3 +68,11 @@ export const eventEntriesRelations = relations(eventEntries, ({ one }) => ({
   event: one(events, { fields: [eventEntries.eventId], references: [events.id] }),
   participant: one(participants, { fields: [eventEntries.participantId], references: [participants.id] }),
 }));
+
+export const auditLogs = pgTable('audit_logs', {
+  id: uuidPk('id'),
+  action: varchar('action', { length: 50 }).notNull(),
+  roomId: uuid('room_id'),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});

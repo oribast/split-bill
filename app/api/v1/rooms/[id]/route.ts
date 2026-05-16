@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { rooms } from '@/db/schema';
+import { rooms, auditLogs } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { getAuthContext } from '@/lib/auth';
 
@@ -29,14 +29,29 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   return NextResponse.json({ room });
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
-  const roomId = params.id;
-  const { auth, response } = await getAuthContext(roomId);
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const { role, response } = await getAuthContext(id, req);
   if (response) return response;
-  if (auth?.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  
+  if (role !== 'admin') {
+    return NextResponse.json({ error: 'Только создатель может удалить комнату' }, { status: 403 });
   }
 
-  await db.delete(rooms).where(eq(rooms.id, roomId));
-  return NextResponse.json({ success: true });
+  try {
+    await db.transaction(async (tx) => {
+      // Каскадное удаление участников/событий настроено на уровне БД
+      await tx.delete(rooms).where(eq(rooms.id, id));
+      await tx.insert(auditLogs).values({
+        action: 'room_deleted',
+        roomId: id,
+        metadata: { deletedAt: new Date().toISOString() }
+      });
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('❌ Ошибка удаления комнаты:', error);
+    return NextResponse.json({ error: 'Не удалось удалить комнату' }, { status: 500 });
+  }
 }

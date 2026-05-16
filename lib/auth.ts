@@ -1,83 +1,64 @@
-import { headers } from 'next/headers';
+import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { rooms, participants } from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
-import { Ratelimit } from '@upstash/ratelimit';
-import { Redis } from '@upstash/redis';
 
-let ratelimit: Ratelimit | null = null;
+export type AuthRole = 'admin' | 'participant' | null;
 
-if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-  const redis = new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN,
-  });
-  ratelimit = new Ratelimit({
-    redis,
-    limiter: Ratelimit.slidingWindow(5, '60 s'),
-  });
+export interface AuthContext {
+  role: AuthRole;
+  participantId?: string;
+  response: NextResponse | null;
 }
 
-export async function checkRateLimit(identifier: string) {
-  if (!ratelimit) {
-    return { success: true }; 
-  }
-  const { success } = await ratelimit.limit(identifier);
-  return { success };
-}
+export async function getAuthContext(roomId: string, req: Request): Promise<AuthContext> {
+  const headers = req.headers;
+  const editKey = headers.get('x-edit-key');
+  const participantKey = headers.get('x-participant-key');
+  const authHeader = headers.get('authorization');
 
-export type AuthContext = 
-  | { role: 'admin'; roomId: string }
-  | { role: 'participant'; roomId: string; participantId: string }
-  | null;
+  const room = await db.query.rooms.findFirst({
+    where: eq(rooms.id, roomId),
+    columns: { id: true, editKey: true, passwordHash: true }
+  });
 
-export async function getAuthContext(roomId: string): Promise<{ auth: AuthContext; response?: Response }> {
-  const headersList = await headers();
-  const editKey = headersList.get('x-edit-key');
-  const participantKey = headersList.get('x-participant-key');
-  const authHeader = headersList.get('authorization');
-
-  // 1. Admin via Edit Key
-  if (editKey) {
-    const room = await db.query.rooms.findFirst({
-      where: eq(rooms.id, roomId),
-      columns: { id: true, editKey: true }
-    });
-    if (room && room.editKey === editKey) {
-      return { auth: { role: 'admin', roomId } };
-    }
+  if (!room) {
+    return { role: null, response: NextResponse.json({ error: 'Комната не найдена' }, { status: 404 }) };
   }
 
-  // 2. Participant via Participant Key
+  // 1️⃣ Приоритет: X-Edit-Key (Admin)
+  if (editKey && editKey === room.editKey) {
+    return { role: 'admin', response: null };
+  }
+
+  // 2️⃣ Приоритет: X-Participant-Key (Participant)
   if (participantKey) {
-    const participant = await db.query.participants.findFirst({
-      where: and(eq(participants.participantKey, participantKey), eq(participants.roomId, roomId)),
-      columns: { id: true, roomId: true }
+    const p = await db.query.participants.findFirst({
+      where: and(eq(participants.roomId, roomId), eq(participants.participantKey, participantKey)),
+      columns: { id: true }
     });
-    if (participant) {
-      return { auth: { role: 'participant', roomId, participantId: participant.id } };
+    if (p) {
+      return { role: 'participant', participantId: p.id, response: null };
     }
   }
 
-  // 3. Admin via Basic Auth (Password)
+  // 3️⃣ Приоритет: Authorization: Basic (Password → Admin)
   if (authHeader?.startsWith('Basic ')) {
-    const base64Credentials = authHeader.split(' ')[1];
-    const credentials = Buffer.from(base64Credentials, 'base64').toString('ascii');
-    const [, password] = credentials.split(':');
-    
-    const room = await db.query.rooms.findFirst({
-      where: eq(rooms.id, roomId),
-      columns: { id: true, passwordHash: true }
-    });
-
-    if (room && room.passwordHash && password) {
-      const isValid = await bcrypt.compare(password, room.passwordHash);
-      if (isValid) {
-        return { auth: { role: 'admin', roomId } };
+    try {
+      const decoded = Buffer.from(authHeader.slice(6), 'base64').toString('utf-8');
+      const [, password] = decoded.split(':');
+      if (password && room.passwordHash) {
+        const isValid = await bcrypt.compare(password, room.passwordHash);
+        if (isValid) {
+          return { role: 'admin', response: null };
+        }
       }
+    } catch {
+      // Некорректный Base64 или формат заголовка
     }
   }
 
-  return { auth: null, response: new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 }) };
+  // ❌ Доступ запрещён
+  return { role: null, response: NextResponse.json({ error: 'Требуется авторизация' }, { status: 401 }) };
 }
