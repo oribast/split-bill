@@ -8,18 +8,18 @@ import { RoomWithRelations } from "@/lib/types";
 import { useTheme } from '@/hooks/use-theme';
 
 import RoomHeader from "@/components/room/RoomHeader";
+import RoomAccessPanel from "@/components/room/RoomAccessPanel";
 import UnlockForm from "@/components/room/UnlockForm";
 import ParticipantsSidebar from "@/components/room/ParticipantsSidebar";
 import IndividualExpenseForm from "@/components/room/IndividualExpenseForm";
 import SharedExpenseForm from "@/components/room/SharedExpenseForm";
 import TotalsBlock from "@/components/room/TotalsBlock";
 import HistoryBlock from "@/components/room/HistoryBlock";
-import RoomAccessPanel from "@/components/room/RoomAccessPanel";
 
 const fetcher = async (url: string) => {
   const roomId = url.split("/").pop();
-  const editKey = typeof window !== "undefined" ? sessionStorage.getItem(`editKey_${roomId}`) : null;
-  const pwd = typeof window !== "undefined" ? sessionStorage.getItem(`password_${roomId}`) : null;
+  const editKey = typeof window !== "undefined" ? localStorage.getItem(`editKey_${roomId}`) : null;
+  const pwd = typeof window !== "undefined" ? localStorage.getItem(`password_${roomId}`) : null;
   const headers: HeadersInit = { "Content-Type": "application/json" };
   if (editKey) headers["x-edit-key"] = editKey;
   if (pwd) headers["Authorization"] = `Basic ${pwd}`;
@@ -60,35 +60,45 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
   const [sharedPayerId, setSharedPayerId] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
+  // ✅ 1. Применение ключей/паролей из URL
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const url = new URL(window.location.href);
+    const editKeyFromUrl = url.searchParams.get('editKey');
+    const pwdFromUrl = url.searchParams.get('pwd');
+
+    if (editKeyFromUrl) {
+      localStorage.setItem(`editKey_${roomId}`, editKeyFromUrl);
+      url.searchParams.delete('editKey');
+      window.history.replaceState({}, '', url.toString());
+      toast.success('Ключ администратора применён');
+      mutate();
+    } else if (pwdFromUrl) {
+      localStorage.setItem(`password_${roomId}`, decodeURIComponent(pwdFromUrl));
+      url.searchParams.delete('pwd');
+      window.history.replaceState({}, '', url.toString());
+      toast.success('Пароль применён. Права администратора активны.');
+      mutate();
+    }
+  }, [roomId, mutate]);
+
+  // ✅ 2. Восстановление сессии при загрузке/перезагрузке
   useEffect(() => {
     if (typeof window === "undefined" || !room) return;
     const hasEditKey = !!localStorage.getItem(`editKey_${roomId}`);
-    const hasPassword = !!localStorage.getItem(`password_${roomId}`);
+    const hasPwd = !!localStorage.getItem(`password_${roomId}`);
     const roomProtected = !!room.passwordHash;
 
     setIsProtected(roomProtected);
 
     if (roomProtected) {
-      if (hasEditKey || hasPassword) {
+      if (hasEditKey || hasPwd) {
         setIsUnlocked(true);
         setShowUnlockForm(false);
       } else {
         setIsUnlocked(false);
         setShowUnlockForm(true);
       }
-    } else {
-      setIsUnlocked(true);
-      setShowUnlockForm(false);
-    }
-  }, [room, roomId]);
-
-  useEffect(() => {
-    if (!room) return;
-    setIsProtected(!!room.passwordHash);
-    if (room.passwordHash && typeof window !== "undefined") {
-      const saved = sessionStorage.getItem(`password_${roomId}`);
-      setIsUnlocked(!!saved);
-      setShowUnlockForm(!saved);
     } else {
       setIsUnlocked(true);
       setShowUnlockForm(false);
@@ -104,22 +114,10 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
     return h;
   };
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const keyFromUrl = searchParams.get('editKey');
-    if (keyFromUrl) {
-      localStorage.setItem(`editKey_${roomId}`, keyFromUrl);
-      const url = new URL(window.location.href);
-      url.searchParams.delete('editKey');
-      window.history.replaceState({}, '', url.toString());
-      toast.success('Ключ администратора применён');
-      mutate();
-    }
-  }, [searchParams, roomId, mutate]);
-
   const handleFetchError = (res: Response) => {
     if (res.status === 401 || res.status === 403) {
-      if (typeof window !== "undefined") sessionStorage.removeItem(`password_${roomId}`);
+      localStorage.removeItem(`password_${roomId}`);
+      localStorage.removeItem(`editKey_${roomId}`);
       setIsUnlocked(false); setShowUnlockForm(true);
       setUnlockError("Неверный пароль или доступ запрещён");
       toast.error("Требуется пароль");
@@ -137,10 +135,7 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
       
       if (res.ok) {
         localStorage.setItem(`password_${roomId}`, authString);
-        setIsUnlocked(true);
-        setShowUnlockForm(false);
-        setUnlockPassword("");
-        setShowUnlockPwd(false);
+        setIsUnlocked(true); setShowUnlockForm(false); setUnlockPassword(""); setShowUnlockPwd(false);
         toast.success("Комната разблокирована. Вам доступны права администратора.");
         mutate();
       } else if (res.status === 401 || res.status === 403) {
@@ -159,10 +154,7 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
     if (window.confirm("Заблокировать редактирование?")) {
       localStorage.removeItem(`password_${roomId}`);
       localStorage.removeItem(`editKey_${roomId}`);
-      setIsUnlocked(false);
-      setShowUnlockForm(true);
-      setUnlockPassword("");
-      setUnlockError("");
+      setIsUnlocked(false); setShowUnlockForm(true); setUnlockPassword(""); setUnlockError("");
       toast("Редактирование заблокировано", { icon: "🔒" });
       mutate();
     }
@@ -184,12 +176,10 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
     if (!isUnlocked) return toast.error("Комната защищена паролем");
     const p = room?.participants.find(x => x.id === pid);
     if (!window.confirm(`Удалить ${p?.name || "участника"}? Расходы будут перераспределены.`)) return;
-    
     setSaving(true);
     try {
       const res = await fetch(`/api/v1/rooms/${roomId}/participants/${pid}`, { method: "DELETE", headers: getHeaders() });
       if (handleFetchError(res)) return;
-      
       if (res.ok) {
         toast.success(`${p?.name || "Участник"} удалён`);
         setSelectedIds(prev => prev.filter(sid => sid !== pid));
@@ -278,6 +268,7 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
 
   const finances: Finances = room ? calculateFinances(room.participants, room.events) : { balances: {}, consumed: {}, paid: {} };
 
+  // ✅ Гидрационная защита темы
   if (!mounted) return null;
 
   return (
@@ -294,11 +285,12 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
         setShowUnlockForm={setShowUnlockForm} 
         copyLink={copyLink} 
       />
-
+      
+      {/* ✅ Панель доступа (реактивная, с поддержкой темы и пароля) */}
       {room?.inviteCode && (
         <RoomAccessPanel roomId={roomId} inviteCode={room.inviteCode} isAdmin={isUnlocked} />
       )}
-      
+
       {isProtected && !isUnlocked && showUnlockForm && (
         <UnlockForm 
           unlockPassword={unlockPassword} 
