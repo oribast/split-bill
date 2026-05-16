@@ -1,43 +1,42 @@
 import { NextResponse } from 'next/server';
-import { getRoomById, deleteRoom } from '@/lib/repositories/room';
-import { guardRoom } from '@/lib/api-guard';
-import { z } from 'zod';
+import { db } from '@/db';
+import { rooms } from '@/db/schema';
+import { eq } from 'drizzle-orm';
+import { getAuthContext } from '@/lib/auth';
 
-export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const room = await getRoomById(id);
+export async function GET(req: Request, { params }: { params: { id: string } }) {
+  const roomId = params.id;
+  
+  const room = await db.query.rooms.findFirst({
+    where: eq(rooms.id, roomId),
+    with: {
+      participants: true,
+      events: {
+        with: {
+          entries: true,
+          payer: { columns: { id: true, name: true } },
+          targetParticipant: { columns: { id: true, name: true } }
+        },
+        orderBy: (events, { desc }) => [desc(events.createdAt)]
+      }
+    }
+  });
+
   if (!room) {
-    return NextResponse.json({ error: 'Room not found' }, { status: 404 });
+    return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
-  return NextResponse.json(room);
+
+  return NextResponse.json({ room });
 }
 
-const deleteSchema = z.object({
-  editKey: z.string().uuid(),
-});
-
-export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const guard = await guardRoom(request, id, { requireAdmin: true });
-  if (guard) return guard;
-
-  const body = await request.json();
-  const parsed = deleteSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+  const roomId = params.id;
+  const { auth, response } = await getAuthContext(roomId);
+  if (response) return response;
+  if (auth?.role !== 'admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
-  try {
-    await deleteRoom(id, parsed.data.editKey, request.headers.get('x-forwarded-for') ?? undefined);
-    return NextResponse.json({ success: true });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown error';
-    if (message === 'Room not found') {
-      return NextResponse.json({ error: message }, { status: 404 });
-    }
-    if (message === 'Invalid edit key') {
-      return NextResponse.json({ error: message }, { status: 403 });
-    }
-    return NextResponse.json({ error: message }, { status: 500 });
-  }
+  await db.delete(rooms).where(eq(rooms.id, roomId));
+  return NextResponse.json({ success: true });
 }

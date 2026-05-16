@@ -1,20 +1,37 @@
 import { NextResponse } from 'next/server';
-import { createRoom } from '@/lib/repositories/room';
+import { db } from '@/db';
+import { rooms } from '@/db/schema';
+import bcrypt from 'bcryptjs';
 import { z } from 'zod';
+import crypto from 'crypto';
 
-const createSchema = z.object({
-  name: z.string().min(1).max(100),
-  password: z.string().min(1).max(100).optional(),
-  currency: z.string().length(3).optional(),
+const createRoomSchema = z.object({
+  name: z.string().min(1).max(255),
+  password: z.string().optional().nullable(),
 });
 
-export async function POST(request: Request) {
-  const body = await request.json();
-  const parsed = createSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
-  }
+export async function POST(req: Request) {
+  try {
+    const json = await req.json();
+    const { name, password } = createRoomSchema.parse(json);
 
-  const room = await createRoom(parsed.data);
-  return NextResponse.json(room, { status: 201 });
+    const editKey = crypto.randomUUID();
+    const passwordHash = password ? await bcrypt.hash(password, 12) : null;
+
+    const [newRoom] = await db.insert(rooms).values({
+      name,
+      editKey,
+      passwordHash,
+    }).returning();
+
+    return NextResponse.json({ 
+      room: newRoom, 
+      editKey 
+    }, { status: 201 });
+  } catch (e) {
+    if (e instanceof z.ZodError) {
+      return NextResponse.json({ error: e.errors }, { status: 400 });
+    }
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
 }

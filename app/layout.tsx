@@ -1,19 +1,26 @@
-import type { Metadata } from 'next';
-import { ThemeProvider } from '@/components/ThemeProvider';
-import { Toaster } from 'sonner';
-import './globals.css';
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import { ThemeProvider } from "@/components/theme-provider";
+
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Split Bill',
-  description: 'Split expenses with friends',
+  title: "Split Bill App",
+  description: "Simple bill splitter",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html lang="ru" suppressHydrationWarning>
-      <body>
-        <ThemeProvider>{children}</ThemeProvider>
-        <Toaster position="top-center" richColors closeButton />
+    <html lang="en" suppressHydrationWarning>
+      <body className={inter.className}>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

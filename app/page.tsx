@@ -1,72 +1,74 @@
-import { redirect } from 'next/navigation';
-import { createRoom } from '@/lib/repositories/room';
-import { createRoomSchema } from '@/lib/validations';
-import { Lock, ArrowRight } from 'lucide-react';
+"use client";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { z } from 'zod';
 
-export default function HomePage() {
-  async function createRoomAction(formData: FormData) {
-    'use server';
+export default function Home() {
+  const router = useRouter();
+  const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-    const parsed = createRoomSchema.safeParse({
-      name: formData.get('name'),
-      password: formData.get('password') || undefined,
-      currency: formData.get('currency') || 'RUB',
-    });
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
 
-    if (!parsed.success) throw new Error('Invalid input');
+    try {
+      const res = await fetch('/api/v1/rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, password: password || null }),
+      });
 
-    const room = await createRoom(parsed.data);
-    redirect(`/room/${room.id}?key=${room.editKey}`);
-  }
+      if (!res.ok) throw new Error('Failed to create room');
+      
+      const data = await res.json();
+      
+      // Сохраняем ключ админа в sessionStorage
+      sessionStorage.setItem(`editKey_${data.room.id}`, data.editKey);
+      
+      router.push(`/room/${data.room.id}`);
+    } catch (err) {
+      setError('Ошибка создания комнаты');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="container" style={{ textAlign: 'center', paddingTop: '80px' }}>
-      <h1 style={{ fontSize: '2.5rem', marginBottom: '16px' }}>Split Bill</h1>
-      <p style={{ color: 'var(--text-muted)', marginBottom: '48px', fontSize: '1.125rem' }}>
-        Создай комнату для разделения счёта и поделись ссылкой
-      </p>
-
-      <div className="card" style={{ maxWidth: '400px', margin: '0 auto 24px' }}>
-        <form action={createRoomAction} className="flex-col gap-4 flex">
-          <div className="form-group" style={{ textAlign: 'left' }}>
-            <label>Название комнаты</label>
-            <input
-              name="name"
-              required
-              maxLength={100}
-              placeholder="Например, Поездка в Берлин"
-            />
-          </div>
-
-          <div className="form-group" style={{ textAlign: 'left' }}>
-            <label>Валюта</label>
-            <select name="currency" defaultValue="RUB">
-              <option value="RUB">RUB</option>
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="KZT">KZT</option>
-            </select>
-          </div>
-
-          <div className="form-group" style={{ textAlign: 'left' }}>
-            <label>Пароль (опционально)</label>
-            <div className="password-field">
-              <Lock className="icon" style={{ color: 'var(--text-muted)' }} />
-              <input
-                name="password"
-                type="password"
-                maxLength={100}
-                placeholder="Защитите комнату"
-              />
-            </div>
-          </div>
-
-          <button type="submit" className="btn-primary" style={{ width: '100%', padding: '14px', fontSize: '1.05rem', marginTop: 4 }}>
-            Создать комнату
-            <ArrowRight className="icon" />
-          </button>
-        </form>
-      </div>
-    </div>
+    <main className="flex min-h-screen flex-col items-center justify-center p-24 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+      <h1 className="text-4xl font-bold mb-8">Создать комнату</h1>
+      <form onSubmit={handleSubmit} className="w-full max-w-md space-y-4">
+        <div>
+          <label className="block mb-2">Название</label>
+          <input 
+            type="text" 
+            required
+            className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+            value={name}
+            onChange={e => setName(e.target.value)}
+          />
+        </div>
+        <div>
+          <label className="block mb-2">Пароль (опционально)</label>
+          <input 
+            type="password" 
+            className="w-full p-2 border rounded dark:bg-gray-800 dark:border-gray-700"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+          />
+        </div>
+        {error && <p className="text-red-500">{error}</p>}
+        <button 
+          type="submit" 
+          disabled={loading}
+          className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700 disabled:opacity-50"
+        >
+          {loading ? 'Создание...' : 'Создать'}
+        </button>
+      </form>
+    </main>
   );
 }

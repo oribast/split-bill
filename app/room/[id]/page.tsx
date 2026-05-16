@@ -1,35 +1,17 @@
 import { notFound } from 'next/navigation';
-import { db } from '@/db';
-import { rooms } from '@/db/schema';
-import { eq } from 'drizzle-orm';
-import { RoomClient } from '@/components/RoomClient';
+import RoomClient from './RoomClient';
 
-type PageProps = {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ key?: string }>;
-};
-
-export default async function RoomPage({ params, searchParams }: PageProps) {
-  const { id } = await params;
-  const { key } = await searchParams;
-
-  const room = await db.query.rooms.findFirst({
-    where: eq(rooms.id, id),
-    columns: { id: true, name: true, currency: true, passwordHash: true, editKey: true },
+async function getRoom(id: string) {
+  const res = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/v1/rooms/${id}`, {
+    cache: 'no-store' // Всегда свежие данные
   });
+  if (!res.ok) return null;
+  return res.json();
+}
 
-  if (!room) notFound();
+export default async function RoomPage({ params }: { params: { id: string } }) {
+  const data = await getRoom(params.id);
+  if (!data) notFound();
 
-  return (
-    <div className="container">
-      <RoomClient
-        roomId={id}
-        editKey={key || ''}
-        isAdmin={key === room.editKey}
-        roomName={room.name}
-        currency={room.currency}
-        hasPassword={!!room.passwordHash}
-      />
-    </div>
-  );
+  return <RoomClient initialData={data.room} roomId={params.id} />;
 }
