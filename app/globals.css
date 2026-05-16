@@ -5,3 +5,74 @@
 body {
   @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
 }
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-body: #f5f7fa;
+  --bg-card: #ffffff;
+  --text-primary: #1a202c;
+  --text-secondary: #4a5568;
+  --text-muted: #a0aec0;
+  --border-color: #e2e8f0;
+  --input-bg: #ffffff;
+  --accent-primary: #4299e1;
+  --accent-primary-hover: #3182ce;
+  --accent-danger: #f56565;
+  --accent-danger-hover: #e53e3e;
+  --item-bg: #f7fafc;
+  --preview-bg: #edf2f7;
+}
+
+[data-theme="dark"] {
+  --bg-body: #0f172a;
+  --bg-card: #1e293b;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --border-color: #334155;
+  --input-bg: #0f172a;
+  --accent-primary: #3b82f6;
+  --accent-primary-hover: #2563eb;
+  --accent-danger: #ef4444;
+  --accent-danger-hover: #dc2626;
+  --item-bg: #1e293b;
+  --preview-bg: #334155;
+}
+
+body {
+  @apply bg-body text-primary font-sans antialiased;
+}
+
+/* Утилиты для компонентов */
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200 cursor-pointer border-none disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap;
+  }
+  .btn-primary {
+    @apply bg-accent text-white hover:bg-accent-hover;
+  }
+  .btn-danger {
+    @apply bg-accent-danger text-white hover:bg-accent-dangerHover;
+  }
+  .btn-secondary {
+    @apply bg-gray-100 text-secondary hover:bg-gray-200 dark:bg-card dark:text-secondary dark:hover:bg-gray-700;
+  }
+  .btn-small {
+    @apply px-3 py-1.5 text-sm;
+  }
+  
+  .input {
+    @apply w-full p-2.5 border border-border rounded-lg text-base transition-colors duration-200 bg-input text-primary focus:outline-none focus:border-accent;
+  }
+  
+  .card {
+    @apply bg-card border border-border rounded-xl p-6 mb-6 shadow-sm;
+  }
+  
+  .form-label {
+    @apply block text-sm font-medium text-secondary mb-1.5;
+  }
+}

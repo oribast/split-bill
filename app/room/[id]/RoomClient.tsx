@@ -1,312 +1,422 @@
 "use client";
 import { useState, useEffect, useCallback } from 'react';
-import useSWR from 'swr';
-import { calculateBalances, Participant, Event, BalanceMap } from '@/lib/calculations';
+import { useRouter } from 'next/navigation';
+import { Room, Participant, Event } from '@/lib/types';
+import { calculateBalances } from '@/lib/calculations';
+import * as Api from '@/lib/api';
 
-export interface Room {
-  id: string;
-  name: string;
-  editKey?: string;
-  passwordHash?: string | null;
-  createdAt?: Date | string;
-  participants: Participant[];
-  events: Event[];
-}
+// Форматирование денег
+const formatMoney = (val: number) => (val / 100).toFixed(2) + ' ₽';
 
-// Безопасный fetch: работает ТОЛЬКО в браузере
-const safeFetch = async (url: string, options?: RequestInit) => {
-  if (typeof window === 'undefined') {
-    throw new Error('Server-side fetch is disabled');
-  }
-  const res = await fetch(url, options);
-  if (!res.ok) {
-    const error = await res.json().catch(() => ({}));
-    throw new Error(error.error || `Request failed: ${res.status}`);
-  }
-  return res.json();
-};
+export default function RoomClient({ initialData, roomId }: { initialData: Room, roomId: string }) {
+  const router = useRouter();
+  
+  // Состояние данных
+  const [room, setRoom] = useState<Room>(initialData);
+  const [loading, setLoading] = useState(false); // Для действий (кнопки)
+  const [fetching, setFetching] = useState(false); // Для загрузки комнаты
+  const [error, setError] = useState('');
 
-export default function RoomClient({
-  initialData,
-  roomId,
-}: {
-  initialData: Room;
-  roomId: string;
-}) {
-  // SWR настроен так, чтобы НЕ делать запросов на сервере
-  const { data: roomData, mutate } = useSWR<{ room: Room }>(
-    `/api/v1/rooms/${roomId}`,
-    () => safeFetch(`/api/v1/rooms/${roomId}`),
-    {
-      fallbackData: { room: initialData },
-      revalidateOnFocus: false,
-      revalidateOnReconnect: false,
-      refreshInterval: typeof window !== 'undefined' ? 5000 : 0, // Только в браузере
-    }
-  );
+  // Тема
+  const [theme, setTheme] = useState('light');
 
-  const room = roomData?.room || initialData;
-  const [editKey, setEditKey] = useState<string | null>(null);
-  const [myParticipantKey, setMyParticipantKey] = useState<string | null>(null);
-  const [formError, setFormError] = useState<string>('');
+  // Пароль
+  const [showUnlock, setShowUnlock] = useState(false);
+  const [unlockPwd, setUnlockPwd] = useState('');
+  const [unlockError, setUnlockError] = useState('');
 
-  const [newParticipantName, setNewParticipantName] = useState('');
-  const [expenseDesc, setExpenseDesc] = useState('');
-  const [expenseAmount, setExpenseAmount] = useState('');
-  const [selectedPayer, setSelectedPayer] = useState('');
-  const [selectedParticipants, setSelectedParticipants] = useState<string[]>([]);
-  const [targetParticipant, setTargetParticipant] = useState('');
-  const [expenseType, setExpenseType] = useState<'shared' | 'individual'>('shared');
+  // Формы
+  const [newName, setNewName] = useState('');
+  
+  // Individual
+  const [indId, setIndId] = useState('');
+  const [indAmount, setIndAmount] = useState('');
+  const [indPayer, setIndPayer] = useState('');
+  const [indNote, setIndNote] = useState(''); // Для описания
 
+  // Shared
+  const [sharedAmount, setSharedAmount] = useState('');
+  const [sharedPayer, setSharedPayer] = useState('');
+  const [sharedIds, setSharedIds] = useState<string[]>([]);
+  const [sharedNote, setSharedNote] = useState(''); // Для описания
+
+  // Инициализация темы
   useEffect(() => {
-    const storedEditKey = sessionStorage.getItem(`editKey_${roomId}`);
-    const storedPartKey = sessionStorage.getItem(`participantKey_${roomId}`);
-    if (storedEditKey) setEditKey(storedEditKey);
-    if (storedPartKey) setMyParticipantKey(storedPartKey);
+    if (typeof window !== 'undefined') {
+      const t = document.documentElement.getAttribute('data-theme') || 'light';
+      setTheme(t);
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === 'light' ? 'dark' : 'light';
+    setTheme(next);
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('theme', next);
+  };
+
+  // Загрузка свежих данных
+  const refresh = useCallback(async () => {
+    setFetching(true);
+    try {
+      const data = await Api.fetchRoom(roomId);
+      setRoom(data);
+      setError('');
+    } catch (e: any) {
+      if (e.message === 'auth_required') {
+        setError('Нужен пароль');
+        setShowUnlock(true);
+      } else {
+        setError('Комната не найдена');
+      }
+    } finally {
+      setFetching(false);
+    }
   }, [roomId]);
 
-  const getHeaders = (): HeadersInit => {
-    const h: HeadersInit = { 'Content-Type': 'application/json' };
-    if (editKey) h['x-edit-key'] = editKey;
-    if (myParticipantKey) h['x-participant-key'] = myParticipantKey;
-    return h;
-  };
+  useEffect(() => { refresh(); }, [refresh]);
 
-  const refreshData = useCallback(async () => {
-    if (typeof window === 'undefined') return;
-    try {
-      const data = await safeFetch(`/api/v1/rooms/${roomId}`);
-      mutate({ room: data.room }, { revalidate: false });
-    } catch (err) {
-      console.warn('Auto-refresh failed:', err);
-    }
-  }, [roomId, mutate]);
-
-  const addParticipant = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError('');
-    if (!newParticipantName.trim() || typeof window === 'undefined') return;
-    
-    try {
-      const data = await safeFetch(`/api/v1/rooms/${roomId}/participants`, {
-        method: 'POST',
-        headers: getHeaders(),
-        body: JSON.stringify({ name: newParticipantName }),
-      });
-      sessionStorage.setItem(`participantKey_${roomId}`, data.participantKey);
-      setMyParticipantKey(data.participantKey);
-      setNewParticipantName('');
-      refreshData();
-    } catch (err: any) {
-      setFormError(err.message || 'Ошибка добавления участника');
-    }
-  };
-
-  const addExpense = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError('');
-    if (typeof window === 'undefined') return;
-    
-    const amountValue = parseFloat(expenseAmount);
-    if (!amountValue || amountValue <= 0 || !selectedPayer) {
-      setFormError('Заполните все обязательные поля');
-      return;
-    }
-    
-    const amountKopecks = Math.round(amountValue * 100);
-    const endpoint = expenseType === 'shared' ? 'shared' : 'individual';
-    const body: any = {
-      description: expenseDesc.trim(),
-      amount: amountKopecks,
-      payerId: selectedPayer,
-    };
-
-    if (expenseType === 'shared') {
-      if (selectedParticipants.length === 0) {
-        setFormError('Выберите хотя бы одного участника');
-        return;
-      }
-      body.participantIds = selectedParticipants;
+  const handleUnlock = async () => {
+    setLoading(true);
+    setUnlockError('');
+    const success = await Api.unlockRoom(roomId, unlockPwd);
+    setLoading(false);
+    if (success) {
+      setShowUnlock(false);
+      refresh();
     } else {
-      if (!targetParticipant) {
-        setFormError('Выберите должника');
-        return;
-      }
-      body.targetParticipantId = targetParticipant;
-    }
-
-    try {
-      await safeFetch(`/api/v1/rooms/${roomId}/expenses/${endpoint}`, {
-        method: 'POST',
-        headers: { ...getHeaders(), 'X-Idempotency-Key': crypto.randomUUID() },
-        body: JSON.stringify(body),
-      });
-      setExpenseDesc('');
-      setExpenseAmount('');
-      setSelectedParticipants([]);
-      setTargetParticipant('');
-      refreshData();
-    } catch (err: any) {
-      setFormError(err.message || 'Ошибка создания траты');
+      setUnlockError('Неверный пароль');
     }
   };
 
-  const revertEvent = async (eventId: string) => {
-    if (!confirm('Отменить эту трату?') || typeof window === 'undefined') return;
+  // --- Действия ---
+
+  const addParticipantAction = async () => {
+    const name = newName.trim() || `Участник ${room.participants.length + 1}`;
+    setLoading(true);
     try {
-      await safeFetch(`/api/v1/rooms/${roomId}/events/${eventId}`, { method: 'POST', headers: getHeaders() });
-      refreshData();
-    } catch (err) {
-      alert('Не удалось отменить трату');
-    }
+      const p = await Api.addParticipant(roomId, name);
+      setRoom(prev => ({ ...prev, participants: [...prev.participants, p] }));
+      setNewName('');
+    } catch (e) { alert('Ошибка'); }
+    finally { setLoading(false); }
   };
 
-  if (!room) return <div className="p-10 animate-pulse">Загрузка...</div>;
+  const removeParticipantAction = async (pid: string) => {
+    if (!confirm('Удалить участника?')) return;
+    setLoading(true);
+    try {
+      await Api.deleteParticipant(roomId, pid);
+      setRoom(prev => ({
+        ...prev,
+        participants: prev.participants.filter(p => p.id !== pid)
+      }));
+      // Очистка селектов
+      if (indId === pid) setIndId('');
+      if (indPayer === pid) setIndPayer('');
+      if (sharedPayer === pid) setSharedPayer('');
+      setSharedIds(prev => prev.filter(id => id !== pid));
+    } catch (e) { alert('Ошибка (нельзя удалить последнего?)'); }
+    finally { setLoading(false); }
+  };
 
-  const balances: BalanceMap = calculateBalances(room.participants, room.events);
+  const handleIndividual = async () => {
+    if (!indId || !indAmount || !indPayer) return alert('Заполните поля');
+    const amount = parseFloat(indAmount) * 100;
+    if (amount <= 0) return alert('Сумма должна быть > 0');
+
+    setLoading(true);
+    try {
+      await Api.addExpense(roomId, {
+        description: `Начислено ${indAmount} ₽ (${indNote || ''})`,
+        amount,
+        payerId: indPayer,
+        targetParticipantId: indId,
+      }, 'individual');
+      
+      setIndAmount(''); setIndNote(''); setIndId('');
+      refresh();
+    } catch (e: any) { alert(e.message); }
+    finally { setLoading(false); }
+  };
+
+  const handleShared = async () => {
+    if (!sharedAmount || sharedIds.length === 0 || !sharedPayer) return alert('Заполните поля');
+    const amount = parseFloat(sharedAmount) * 100;
+    
+    setLoading(true);
+    try {
+      await Api.addExpense(roomId, {
+        description: `Общее: ${sharedAmount} ₽ (${sharedNote || ''})`,
+        amount,
+        payerId: sharedPayer,
+        participantIds: sharedIds,
+      }, 'shared');
+
+      setSharedAmount(''); setSharedNote(''); setSharedIds([]);
+      refresh();
+    } catch (e: any) { alert(e.message); }
+    finally { setLoading(false); }
+  };
+
+  const handleRevert = async (eventId: string) => {
+    if (!confirm('Откатить трату?')) return;
+    setLoading(true);
+    try {
+      await Api.revertEvent(roomId, eventId);
+      refresh();
+    } catch (e) { alert('Ошибка'); }
+    finally { setLoading(false); }
+  };
+
+  // --- Вычисления ---
+  const balances = calculateBalances(room.participants, room.events);
+  const totalDebt = Object.values(balances).reduce((a, b) => a + b, 0); // Должно быть 0, если все посчитано верно, но здесь это "сколько должны вернуть"
+
+  // Превью шаринга
+  const sharedPreview = (() => {
+    if (!sharedAmount || sharedIds.length === 0) return null;
+    const total = parseFloat(sharedAmount) * 100;
+    const count = sharedIds.length;
+    const base = Math.floor(total / count);
+    let rem = total % count;
+    return sharedIds.map(id => {
+      const add = base + (rem > 0 ? 1 : 0);
+      if (rem > 0) rem--;
+      const p = room.participants.find(x => x.id === id);
+      return { name: p?.name || '?', val: add / 100 };
+    });
+  })();
+
+  // --- Рендер ---
+  if (error === 'Комната не найдена') {
+    return (
+      <div className="text-center py-20">
+        <h1 className="text-2xl font-bold mb-4">Комната не найдена</h1>
+        <button onClick={() => router.push('/')} className="btn btn-primary">На главную</button>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen p-4 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-sans">
-      <header className="mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="container mx-auto max-w-4xl px-4 py-8">
+      {/* Header */}
+      <header className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold">{room.name}</h1>
-          <p className="text-sm text-gray-500">ID: {room.id}</p>
+          <h1 className="text-2xl font-bold text-primary">{room.name || 'Загрузка...'}</h1>
+          <p className="text-muted text-sm font-mono">{roomId}</p>
         </div>
-        <button onClick={refreshData} className="px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded text-sm hover:bg-gray-300 dark:hover:bg-gray-600">
-          Обновить
-        </button>
+        <div className="flex gap-2">
+          <button onClick={toggleTheme} className="btn btn-secondary btn-small" title="Сменить тему">
+            {theme === 'light' ? '🌙' : '☀️'}
+          </button>
+          <button onClick={refresh} className="btn btn-secondary btn-small" disabled={fetching}>
+            {fetching ? '...' : '↻'}
+          </button>
+          <button onClick={() => { navigator.clipboard.writeText(window.location.href); alert('Скопировано'); }} className="btn btn-secondary btn-small">
+            🔗
+          </button>
+        </div>
       </header>
 
-      {formError && (
-        <div className="mb-4 p-3 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg">
-          {formError}
-          <button className="ml-2 text-sm underline" onClick={() => setFormError('')}>Закрыть</button>
+      {/* Auth Modal */}
+      {showUnlock && (
+        <div className="card border-l-4 border-l-accent-danger bg-yellow-50 dark:bg-yellow-900/20">
+          <h3 className="font-bold text-lg mb-2">Комната защищена</h3>
+          <div className="flex gap-2">
+            <input 
+              className="input" 
+              type="password" 
+              placeholder="Пароль" 
+              value={unlockPwd} 
+              onChange={e => setUnlockPwd(e.target.value)} 
+            />
+            <button onClick={handleUnlock} disabled={loading} className="btn btn-primary">
+              Войти
+            </button>
+          </div>
+          {unlockError && <p className="text-accent-danger mt-2 text-sm">{unlockError}</p>}
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Balances */}
-        <section className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-          <h2 className="text-xl font-semibold mb-4">Балансы</h2>
-          <ul className="space-y-3 mb-6">
-            {room.participants.map((p: Participant) => {
-              const bal = balances[p.id] || 0;
-              const color = bal > 0 ? 'text-green-600' : bal < 0 ? 'text-red-500' : 'text-gray-600';
-              return (
-                <li key={p.id} className="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700/50 rounded">
-                  <span className="font-medium">{p.name}</span>
-                  <span className={`font-mono font-bold ${color}`}>{(bal / 100).toFixed(2)} ₽</span>
-                </li>
-              );
-            })}
-          </ul>
-          {editKey && (
-            <form onSubmit={addParticipant} className="mt-4 pt-4 border-t dark:border-gray-700">
-              <h3 className="text-sm font-bold mb-2 uppercase text-gray-500">Добавить участника</h3>
-              <div className="flex gap-2">
-                <input className="flex-1 p-2 border rounded dark:bg-gray-900 dark:border-gray-600"
-                  placeholder="Имя" value={newParticipantName} onChange={(e) => setNewParticipantName(e.target.value)} />
-                <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">+</button>
-              </div>
-            </form>
-          )}
-        </section>
+      {!fetching && !showUnlock && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          {/* 1. Участники и балансы */}
+          <section className="card">
+            <h2 className="text-lg font-bold mb-4 text-secondary border-b border-border pb-2">Балансы</h2>
+            
+            {/* Список */}
+            <div className="space-y-2 mb-6">
+              {room.participants.map(p => {
+                const bal = balances[p.id] || 0;
+                const color = bal > 0 ? 'text-green-500' : bal < 0 ? 'text-red-500' : 'text-muted';
+                return (
+                  <div key={p.id} className="flex justify-between items-center p-2 bg-item rounded">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{p.name}</span>
+                      <button 
+                        onClick={() => removeParticipantAction(p.id)}
+                        className="text-muted hover:text-accent-danger text-xs px-1"
+                        title="Удалить"
+                      >✕</button>
+                    </div>
+                    <span className={`font-mono font-bold ${color}`}>{(bal/100).toFixed(2)} ₽</span>
+                  </div>
+                );
+              })}
+            </div>
 
-        {/* Add Expense */}
-        <section className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-          <h2 className="text-xl font-semibold mb-4">Новая трата</h2>
-          <form onSubmit={addExpense} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-gray-500 mb-1">Описание</label>
-              <input required className="w-full p-2 border rounded dark:bg-gray-900 dark:border-gray-600"
-                value={expenseDesc} onChange={(e) => setExpenseDesc(e.target.value)} />
+            {/* Добавление */}
+            <div className="flex gap-2">
+              <input 
+                className="input" 
+                placeholder="Новый участник" 
+                value={newName} 
+                onChange={e => setNewName(e.target.value)} 
+                onKeyDown={e => e.key === 'Enter' && addParticipantAction()}
+              />
+              <button onClick={addParticipantAction} disabled={loading} className="btn btn-primary">+</button>
             </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-500 mb-1">Сумма (₽)</label>
-              <input type="number" step="0.01" min="0.01" required
-                className="w-full p-2 border rounded dark:bg-gray-900 dark:border-gray-600"
-                value={expenseAmount} onChange={(e) => setExpenseAmount(e.target.value)} />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-gray-500 mb-1">Кто платил</label>
-              <select className="w-full p-2 border rounded dark:bg-gray-900 dark:border-gray-600"
-                value={selectedPayer} onChange={(e) => setSelectedPayer(e.target.value)}>
-                <option value="">Выберите...</option>
-                {room.participants.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            </div>
-            <div className="flex gap-2 mb-2">
-              <button type="button" onClick={() => setExpenseType('shared')}
-                className={`flex-1 py-1 text-sm rounded ${expenseType === 'shared' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 'bg-gray-100 dark:bg-gray-700'}`}>
-                На всех
-              </button>
-              <button type="button" onClick={() => setExpenseType('individual')}
-                className={`flex-1 py-1 text-sm rounded ${expenseType === 'individual' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' : 'bg-gray-100 dark:bg-gray-700'}`}>
-                Конкретному лицу
-              </button>
-            </div>
-            {expenseType === 'shared' ? (
+          </section>
+
+          {/* 2. Индивидуальная трата */}
+          <section className="card">
+            <h2 className="text-lg font-bold mb-4 text-secondary border-b border-border pb-2">Начислить лично</h2>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="form-label">Кому</label>
+                  <select className="input" value={indId} onChange={e => setIndId(e.target.value)}>
+                    <option value="">Выберите...</option>
+                    {room.participants.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label">Плательщик</label>
+                  <select className="input" value={indPayer} onChange={e => setIndPayer(e.target.value)}>
+                    <option value="">Выберите...</option>
+                    {room.participants.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                </div>
+              </div>
               <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">На кого делим</label>
-                <div className="max-h-32 overflow-y-auto border rounded p-2 dark:border-gray-600 space-y-1">
-                  {room.participants.map((p) => (
-                    <label key={p.id} className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" checked={selectedParticipants.includes(p.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) setSelectedParticipants([...selectedParticipants, p.id]);
-                          else setSelectedParticipants(selectedParticipants.filter(id => id !== p.id));
-                        }} />
+                <label className="form-label">Сумма (₽)</label>
+                <input 
+                  type="number" className="input" placeholder="0.00" 
+                  value={indAmount} onChange={e => setIndAmount(e.target.value)} 
+                />
+              </div>
+              <div>
+                <label className="form-label">Комментарий</label>
+                <input className="input" placeholder="Например: Такси" value={indNote} onChange={e => setIndNote(e.target.value)} />
+              </div>
+              <button onClick={handleIndividual} disabled={loading || !indId} className="btn btn-primary w-full mt-2">
+                Начислить
+              </button>
+            </div>
+          </section>
+
+          {/* 3. Общая трата */}
+          <section className="card col-span-1 md:col-span-2">
+            <h2 className="text-lg font-bold mb-4 text-secondary border-b border-border pb-2">Раскидать сумму</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-3">
+                <div>
+                  <label className="form-label">Сумма (₽)</label>
+                  <input 
+                    type="number" className="input" placeholder="0.00" 
+                    value={sharedAmount} onChange={e => setSharedAmount(e.target.value)} 
+                  />
+                </div>
+                <div>
+                  <label className="form-label">Плательщик</label>
+                  <select className="input" value={sharedPayer} onChange={e => setSharedPayer(e.target.value)}>
+                    <option value="">Выберите...</option>
+                    {room.participants.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label">Комментарий</label>
+                  <input className="input" placeholder="Общий ужин" value={sharedNote} onChange={e => setSharedNote(e.target.value)} />
+                </div>
+                <div className="flex gap-2">
+                  <button onClick={() => setSharedIds(room.participants.map(p => p.id))} className="btn btn-secondary btn-small">Все</button>
+                  <button onClick={() => setSharedIds([])} className="btn btn-secondary btn-small">Никто</button>
+                </div>
+              </div>
+
+              <div>
+                <label className="form-label">Кого включить</label>
+                <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 bg-item rounded border border-border">
+                  {room.participants.map(p => (
+                    <label key={p.id} className="flex items-center gap-2 cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={sharedIds.includes(p.id)} 
+                        onChange={e => {
+                          if(e.target.checked) setSharedIds([...sharedIds, p.id]);
+                          else setSharedIds(sharedIds.filter(id => id !== p.id));
+                        }}
+                        className="rounded text-accent focus:ring-accent"
+                      />
                       <span className="text-sm">{p.name}</span>
                     </label>
                   ))}
                 </div>
-              </div>
-            ) : (
-              <div>
-                <label className="block text-xs font-bold text-gray-500 mb-1">Должник</label>
-                <select className="w-full p-2 border rounded dark:bg-gray-900 dark:border-gray-600"
-                  value={targetParticipant} onChange={(e) => setTargetParticipant(e.target.value)}>
-                  <option value="">Выберите...</option>
-                  {room.participants.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </div>
-            )}
-            <button type="submit" className="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700 font-medium">
-              Добавить трату
-            </button>
-          </form>
-        </section>
 
-        {/* History */}
-        <section className="bg-white dark:bg-gray-800 p-6 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-          <h2 className="text-xl font-semibold mb-4">История</h2>
-          <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
-            {room.events.length === 0 && <p className="text-gray-500 text-sm">Нет трат</p>}
-            {room.events.map((ev) => (
-              <div key={ev.id} className={`p-3 rounded border ${ev.isReverted ? 'bg-gray-100 dark:bg-gray-900 opacity-50' : ''}`}>
-                <div className="flex justify-between items-start">
+                {sharedPreview && (
+                  <div className="mt-4 p-3 bg-preview border border-border rounded text-sm">
+                    <div className="font-bold mb-1">Итого каждому:</div>
+                    {sharedPreview.map((item, i) => (
+                      <div key={i} className="flex justify-between">
+                        <span>{item.name}</span>
+                        <span className="font-mono">{item.val.toFixed(2)} ₽</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                <button 
+                  onClick={handleShared} 
+                  disabled={loading || sharedIds.length === 0} 
+                  className="btn btn-primary w-full mt-4"
+                >
+                  Распределить
+                </button>
+              </div>
+            </div>
+          </section>
+
+          {/* 4. История */}
+          <section className="card col-span-1 md:col-span-2">
+            <h2 className="text-lg font-bold mb-4 text-secondary">История операций</h2>
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {room.events.length === 0 && <p className="text-muted text-center py-4">Пока пусто</p>}
+              {room.events.map(ev => (
+                <div key={ev.id} className={`p-4 rounded border border-border bg-card flex justify-between items-start ${ev.isReverted ? 'opacity-50' : ''}`}>
                   <div>
-                    <div className="font-medium">{ev.description}</div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      {ev.type === 'shared' ? 'Общая' : 'Личная'} • {new Date(ev.createdAt).toLocaleDateString()}
+                    <div className="font-bold text-primary">{ev.description}</div>
+                    <div className="text-xs text-muted mt-1">
+                      {new Date(ev.createdAt).toLocaleString()} • {ev.type === 'shared' ? 'Общее' : 'Личное'}
+                      <span className="ml-2">Платил: {ev.payer?.name}</span>
                     </div>
-                    <div className="text-xs text-gray-400 mt-1">Платил: {ev.payer?.name || 'Unknown'}</div>
                   </div>
                   <div className="text-right">
-                    <div className="font-bold">{(ev.amount / 100).toFixed(2)} ₽</div>
-                    {ev.isReverted && <span className="text-xs text-red-500 block">Отменено</span>}
+                    <div className="font-mono font-bold">{(ev.amount/100).toFixed(2)} ₽</div>
+                    {!ev.isReverted && (
+                      <button onClick={() => handleRevert(ev.id)} className="text-xs text-accent-danger hover:underline mt-1">
+                        Отмена
+                      </button>
+                    )}
                   </div>
                 </div>
-                {!ev.isReverted && editKey && (
-                  <button onClick={() => revertEvent(ev.id)} className="mt-2 text-xs text-red-500 hover:underline">
-                    Отменить трату
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-      </div>
+              ))}
+            </div>
+          </section>
+
+        </div>
+      )}
     </div>
   );
 }
