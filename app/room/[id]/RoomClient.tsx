@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import toast from "react-hot-toast";
 import { calculateFinances, Finances } from "@/lib/calculations";
-import { Room } from "@/lib/types";
+import { RoomWithRelations } from "@/lib/types";
 import { useTheme } from '@/hooks/use-theme';
 
 import RoomHeader from "@/components/room/RoomHeader";
@@ -29,12 +29,12 @@ const fetcher = async (url: string) => {
     throw new Error("fetch_failed");
   }
   const data = await res.json();
-  return data.room as Room;
+  return data.room as RoomWithRelations;
 };
 
-export default function RoomClient({ initialData, roomId }: { initialData: Room; roomId: string }) {
+export default function RoomClient({ initialData, roomId }: { initialData: RoomWithRelations; roomId: string }) {
   const router = useRouter();
-  const { data: room, mutate, isLoading, error } = useSWR<Room>(`/api/v1/rooms/${roomId}`, fetcher, {
+  const { data: room, mutate, isLoading, error } = useSWR<RoomWithRelations>(`/api/v1/rooms/${roomId}`, fetcher, {
     fallbackData: initialData,
     revalidateOnFocus: false,
   });
@@ -138,12 +138,10 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
       
       if (res.ok) {
         toast.success(`${p?.name || "Участник"} удалён`);
-        // Оптимистичное обновление списков
         setSelectedIds(prev => prev.filter(sid => sid !== pid));
         if (selectedId === pid) setSelectedId("");
         if (payerId === pid) setPayerId("");
         if (sharedPayerId === pid) setSharedPayerId("");
-        // Перезагружаем данные комнаты
         mutate();
       } else {
         const err = await res.json().catch(() => ({}));
@@ -182,7 +180,7 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
       const desc = `Распределено ${amount.toFixed(2)} ₽ (${selectedIds.length} чел.: ${names})${notePart}`;
       const res = await fetch(`/api/v1/rooms/${roomId}/expenses/shared`, { method: "POST", headers: { ...getHeaders(), "X-Idempotency-Key": crypto.randomUUID() }, body: JSON.stringify({ description: desc, amount: Math.round(amount * 100), payerId: sharedPayerId, participantIds: selectedIds }) });
       if (handleFetchError(res)) return;
-      if (res.ok) { toast.success(`Распеределено ${amount.toFixed(2)} ₽`); setSharedAmount(""); setSharedNote(""); setSharedPayerId(""); setSelectedIds([]); mutate(); }
+      if (res.ok) { toast.success(`Распределено ${amount.toFixed(2)} ₽`); setSharedAmount(""); setSharedNote(""); setSharedPayerId(""); setSelectedIds([]); mutate(); }
       else toast.error("Ошибка распределения");
     } catch { toast.error("Ошибка сети"); } finally { setSaving(false); }
   };
@@ -226,7 +224,6 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
 
   const finances: Finances = room ? calculateFinances(room.participants, room.events) : { balances: {}, consumed: {}, paid: {} };
 
-  // Рендерим только после монтирования, чтобы избежать гидратационных конфликтов с темой
   if (!mounted) return null;
 
   return (
