@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { Lock, LockOpen, ClipboardCopy, Loader2, RefreshCw } from 'lucide-react';
+import { Wallet, Users, Receipt, Loader2, RefreshCw, ClipboardCopy } from 'lucide-react';
 import { storeEditKey, getAuthHeaders } from '@/lib/client-auth';
 import { ThemeToggle } from './ThemeToggle';
 import { AddParticipantForm } from './AddParticipantForm';
@@ -50,8 +50,6 @@ export function RoomClient({
     ([url, key]) => fetcher(url, key)
   );
 
-  const isLocked = hasPassword && !isAdmin && !editKey;
-
   if (error?.message === 'Unauthorized' && hasPassword && !room) {
     return <PasswordPrompt roomId={roomId} onSuccess={() => mutate()} />;
   }
@@ -69,7 +67,7 @@ export function RoomClient({
     return (
       <div className="container" style={{ textAlign: 'center', paddingTop: '80px' }}>
         <p style={{ color: 'var(--accent-danger)', fontWeight: 500, marginBottom: 16 }}>Не удалось загрузить комнату</p>
-        <button className="btn-secondary" onClick={() => mutate()}>
+        <button className="btn btn-secondary" onClick={() => mutate()}>
           <RefreshCw className="icon" /> Попробовать снова
         </button>
       </div>
@@ -79,10 +77,7 @@ export function RoomClient({
   const participants = room.participants || [];
   const events = room.events || [];
 
-  const balanceMap = new Map(
-    (balances || []).map((b: any) => [b.participantId, b])
-  );
-
+  const balanceMap = new Map((balances || []).map((b: any) => [b.participantId, b]));
   const enriched = participants.map((p: any) => ({
     ...p,
     ...(balanceMap.get(p.id) || { paid: 0, share: 0, net: 0 }),
@@ -98,31 +93,21 @@ export function RoomClient({
 
   return (
     <div className="container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
-        <h1>Комната: {room.name || roomName}</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+        <h1 style={{ fontSize: '1.75rem', fontWeight: 700 }}>{room.name || roomName}</h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <ThemeToggle />
-          {hasPassword && (
-            <button className={isAdmin ? 'btn-secondary btn-small' : 'btn-small'} style={{ background: isAdmin ? undefined : '#f6ad55', color: isAdmin ? undefined : 'white' }}>
-              {isAdmin ? <><LockOpen className="icon" /> Открыто</> : <><Lock className="icon" /> Заблокировано</>}
-            </button>
-          )}
-          <button className="btn-secondary btn-small" onClick={copyLink}>
+          <button className="btn btn-secondary btn-small" onClick={copyLink}>
             <ClipboardCopy className="icon" /> Ссылка
           </button>
         </div>
       </div>
 
-      {isLocked && (
-        <div className="card unlock-card">
-          <h3 className="unlock-title"><Lock className="icon" /> Введите пароль комнаты</h3>
-          <PasswordPrompt roomId={roomId} onSuccess={() => mutate()} inline />
-        </div>
-      )}
-
       <div className="card">
-        <h2>Участники</h2>
-        {isAdmin && <AddParticipantForm roomId={roomId} onAdd={() => mutate()} />}
+        <h2 style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+          <Users className="icon" style={{ color: 'var(--text-muted)' }} /> Участники
+        </h2>
+        {isAdmin && <AddParticipantForm roomId={roomId} onAdd={() => mutate()} existingCount={participants.length} />}
         {participants.length === 0 ? (
           <div className="empty-state">
             <div className="empty-icon">👥</div>
@@ -130,10 +115,10 @@ export function RoomClient({
             <div className="empty-subtitle">Добавьте первого, чтобы начать делить счёт</div>
           </div>
         ) : (
-          <div className="participants-list" style={{ marginTop: 16 }}>
+          <div className="participants-list" style={{ marginTop: isAdmin ? 16 : 0 }}>
             {enriched.map((p: any) => (
               <div key={p.id} className="participant-item">
-                <span style={{ flex: 1, fontWeight: 500 }}>{p.name}</span>
+                <span style={{ flex: 1, fontWeight: 500, fontSize: '0.95rem' }}>{p.name}</span>
                 <span className={`participant-amount ${(p.net || 0) >= 0 ? 'balance-positive' : 'balance-negative'}`}>
                   {(p.net || 0) >= 0 ? '+' : ''}{((p.net || 0) / 100).toFixed(2)} {currency}
                 </span>
@@ -146,12 +131,16 @@ export function RoomClient({
       {isAdmin && participants.length > 0 && (
         <>
           <div className="card">
-            <h2>Личная трата</h2>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+              <Receipt className="icon" style={{ color: 'var(--text-muted)' }} /> Личная трата
+            </h2>
             <IndividualExpenseForm roomId={roomId} participants={participants} editKey={editKey} onAdd={() => mutate()} currency={currency} />
           </div>
 
           <div className="card">
-            <h2>Общая трата</h2>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+              <Wallet className="icon" style={{ color: 'var(--text-muted)' }} /> Общая трата
+            </h2>
             <SharedExpenseForm roomId={roomId} participants={participants} editKey={editKey} onAdd={() => mutate()} currency={currency} />
           </div>
         </>
@@ -159,7 +148,7 @@ export function RoomClient({
 
       {participants.length > 0 && (
         <div className="card">
-          <h2>Итого</h2>
+          <h2 style={{ marginBottom: 16 }}>Итого</h2>
           {enriched.map((p: any) => (
             <div key={p.id} className="total-row">
               <span>{p.name}</span>
@@ -176,7 +165,7 @@ export function RoomClient({
       )}
 
       <div className="card">
-        <h2>История операций</h2>
+        <h2 style={{ marginBottom: 16 }}>История операций</h2>
         <ExpenseHistory
           roomId={roomId}
           events={events}

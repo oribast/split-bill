@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { User } from 'lucide-react';
 import { splitIndividual } from '@/lib/split';
 import { individualExpenseSchema } from '@/lib/validations';
 import { getAuthHeaders } from '@/lib/client-auth';
@@ -72,19 +73,22 @@ export function IndividualExpenseForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex-col gap-3 flex">
+    <form onSubmit={handleSubmit} className="flex-col gap-4 flex">
       <div className="form-row">
         <div className="form-group">
-          <label>Кому / Для кого</label>
-          <select value={selectedIds[0] || ''} onChange={(e) => { setSelectedIds(e.target.value ? [e.target.value] : []); }}>
+          <label className="form-label">Кому / Для кого</label>
+          <select
+            value={selectedIds[0] || ''}
+            onChange={(e) => { setSelectedIds(e.target.value ? [e.target.value] : []); }}
+          >
             <option value="">Выберите участника</option>
             {participants.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </div>
         <div className="form-group">
-          <label>Кто платил</label>
+          <label className="form-label">Кто платил</label>
           <select value={payerId} onChange={(e) => setPayerId(e.target.value)} className="input select">
-            <option value="">Выберите плательщика</option>
+            <option value="">Выберите</option>
             {participants.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </div>
@@ -92,18 +96,30 @@ export function IndividualExpenseForm({
 
       <div className="form-row">
         <div className="form-group">
-          <label>Сумма</label>
-          <input type="number" step="0.01" min="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={`0.00 ${currency}`} />
+          <label className="form-label">Сумма</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0.01"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder={`0.00 ${currency}`}
+          />
         </div>
         <div className="form-group">
-          <label>Примечание</label>
-          <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="За что (например, такси)" />
+          <label className="form-label">Комментарий (необязательно)</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="За что (например, такси)"
+          />
         </div>
       </div>
 
       {preview.length > 0 && (
         <div className="preview-box">
-          <div className="preview-title">Предпросмотр:</div>
+          <div className="preview-title">Предпросмотр</div>
           {preview.map((entry) => {
             const person = participants.find((x) => x.id === entry.participantId);
             return (
@@ -116,7 +132,7 @@ export function IndividualExpenseForm({
         </div>
       )}
 
-      <button type="submit" className="btn-primary" disabled={loading || !selectedIds.length || !payerId}>
+      <button type="submit" className="btn btn-primary" disabled={loading || !selectedIds.length || !payerId}>
         {loading ? 'Сохранение...' : 'Добавить личную трату'}
       </button>
     </form>

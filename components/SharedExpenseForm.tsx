@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { Split } from 'lucide-react';
 import { splitShared } from '@/lib/split';
 import { sharedExpenseSchema } from '@/lib/validations';
 import { getAuthHeaders } from '@/lib/client-auth';
@@ -75,29 +76,41 @@ export function SharedExpenseForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex-col gap-3 flex">
+    <form onSubmit={handleSubmit} className="flex-col gap-4 flex">
       <div className="form-row">
         <div className="form-group">
-          <label>Сумма для распределения</label>
-          <input type="number" step="0.01" min="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder={`0.00 ${currency}`} />
+          <label className="form-label">Сумма</label>
+          <input
+            type="number"
+            step="0.01"
+            min="0.01"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder={`0.00 ${currency}`}
+          />
         </div>
         <div className="form-group">
-          <label>Кто платил</label>
+          <label className="form-label">Кто платил</label>
           <select value={payerId} onChange={(e) => setPayerId(e.target.value)} className="input select">
-            <option value="">Выберите плательщика</option>
+            <option value="">Выберите</option>
             {participants.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </div>
       </div>
 
       <div className="form-group">
-        <label>Примечание</label>
-        <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Например, общий чек в ресторане" />
+        <label className="form-label">Комментарий (необязательно)</label>
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Например, ужин в ресторане"
+        />
       </div>
 
       <div style={{ display: 'flex', gap: 8, marginBottom: 4 }}>
-        <button type="button" className="btn-secondary btn-small" onClick={selectAll}>Выбрать всех</button>
-        <button type="button" className="btn-secondary btn-small" onClick={deselectAll}>Снять всех</button>
+        <button type="button" className="btn btn-secondary btn-small" onClick={selectAll}>Выбрать всех</button>
+        <button type="button" className="btn btn-secondary btn-small" onClick={deselectAll}>Снять всех</button>
       </div>
 
       <div className="checkbox-grid">
@@ -111,7 +124,7 @@ export function SharedExpenseForm({
 
       {preview.length > 0 && (
         <div className="preview-box">
-          <div className="preview-title">Предпросмотр распределения:</div>
+          <div className="preview-title">Предпросмотр распределения</div>
           {preview.map((entry) => {
             const person = participants.find((x) => x.id === entry.participantId);
             return (
@@ -124,7 +137,7 @@ export function SharedExpenseForm({
         </div>
       )}
 
-      <button type="submit" className="btn-primary" disabled={loading || selectedIds.length === 0 || !payerId}>
+      <button type="submit" className="btn btn-primary" disabled={loading || selectedIds.length === 0 || !payerId}>
         {loading ? 'Сохранение...' : `Распределить поровну (${selectedIds.length} чел.)`}
       </button>
     </form>

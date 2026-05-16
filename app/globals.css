@@ -85,11 +85,12 @@ input[type='number'],
 input[type='password'],
 select {
   width: 100%;
-  padding: 10px 14px;
+  height: 48px;
+  padding: 0 16px;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   font-size: 1rem;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
   background: var(--input-bg);
   color: var(--text-primary);
 }
@@ -97,21 +98,23 @@ select {
 input:focus, select:focus {
   outline: none;
   border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15);
 }
 
 button, .btn {
-  padding: 10px 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 48px;
+  padding: 0 24px;
   border: none;
   border-radius: 8px;
   font-size: 1rem;
   cursor: pointer;
   transition: all 0.2s;
-  font-weight: 500;
+  font-weight: 600;
   white-space: nowrap;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
 }
 
 button:disabled, .btn:disabled {
@@ -146,7 +149,7 @@ button:disabled, .btn:disabled {
   background: var(--accent-secondary-hover);
 }
 
-.btn-small { padding: 6px 12px; font-size: 0.875rem; }
+.btn-small { padding: 0 16px; height: 36px; font-size: 0.875rem; }
 
 .form-row {
   display: flex;
@@ -163,6 +166,12 @@ button:disabled, .btn:disabled {
   min-width: 150px;
 }
 
+.form-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
 .participants-list {
   display: flex;
   flex-direction: column;
@@ -176,21 +185,6 @@ button:disabled, .btn:disabled {
   padding: 12px;
   background: var(--item-bg);
   border-radius: 8px;
-}
-
-.participant-item input[type='text'] {
-  flex: 1;
-  background: transparent;
-  border: 1px solid transparent;
-  padding: 6px;
-  border-radius: 4px;
-  color: var(--text-primary);
-}
-
-.participant-item input[type='text']:hover,
-.participant-item input[type='text']:focus {
-  background: var(--input-bg);
-  border-color: var(--border-color);
 }
 
 .participant-amount {
@@ -211,17 +205,19 @@ button:disabled, .btn:disabled {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 10px 12px;
   background: var(--item-bg);
   border-radius: 6px;
   cursor: pointer;
   user-select: none;
   border: 1px solid var(--border-color);
+  font-size: 0.95rem;
 }
 
 .checkbox-item input {
   cursor: pointer;
-  width: auto;
+  width: 18px;
+  height: 18px;
   accent-color: var(--accent-primary);
 }
 
@@ -230,6 +226,7 @@ button:disabled, .btn:disabled {
   justify-content: space-between;
   padding: 12px 0;
   border-bottom: 1px solid var(--border-color);
+  font-size: 0.95rem;
 }
 
 .total-row:last-child {
@@ -240,70 +237,6 @@ button:disabled, .btn:disabled {
   margin-top: 4px;
   padding-top: 16px;
   border-top: 2px solid var(--border-color);
-}
-
-.empty {
-  color: var(--text-muted);
-  text-align: center;
-  padding: 20px;
-}
-
-.actions {
-  display: flex;
-  gap: 12px;
-  margin-top: 8px;
-}
-
-.icon {
-  width: 20px;
-  height: 20px;
-  flex-shrink: 0;
-}
-
-.password-field {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: var(--input-bg);
-  transition: border-color 0.2s;
-}
-
-.password-field:focus-within {
-  border-color: var(--accent-primary);
-}
-
-.password-field input {
-  flex: 1;
-  border: none;
-  background: transparent;
-  font-size: 1rem;
-  outline: none;
-  padding: 0;
-  color: var(--text-primary);
-}
-
-.password-toggle {
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  line-height: 1;
-  color: var(--text-muted);
-  transition: color 0.2s;
-  display: flex;
-  align-items: center;
-}
-
-.password-toggle:hover {
-  color: var(--text-primary);
-}
-
-input[type='password']::-ms-reveal,
-input[type='password']::-ms-clear {
-  display: none;
 }
 
 .empty-state {
@@ -332,7 +265,7 @@ input[type='password']::-ms-clear {
 
 .preview-box {
   margin-top: 12px;
-  padding: 12px;
+  padding: 16px;
   background: var(--preview-bg);
   border: 1px dashed var(--preview-border);
   border-radius: 8px;
@@ -343,20 +276,24 @@ input[type='password']::-ms-clear {
   font-weight: 600;
   color: var(--text-secondary);
   margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .preview-row {
   display: flex;
   justify-content: space-between;
-  padding: 4px 0;
-  font-size: 0.9rem;
+  padding: 6px 0;
+  font-size: 0.95rem;
   color: var(--text-primary);
 }
 
 .theme-toggle {
   background: var(--accent-secondary-bg);
   color: var(--accent-secondary-text);
-  padding: 6px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
   border-radius: 8px;
   display: inline-flex;
   align-items: center;
@@ -367,29 +304,6 @@ input[type='password']::-ms-clear {
 
 .theme-toggle:hover {
   background: var(--accent-secondary-hover);
-}
-
-.unlock-card {
-  background: #fffbeb;
-  border: 1px solid #f6ad55;
-}
-
-.unlock-title {
-  font-size: 1rem;
-  margin-bottom: 12px;
-  color: #744210;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-[data-theme="dark"] .unlock-card {
-  background: #2d1b0e;
-  border-color: #b7791f;
-}
-
-[data-theme="dark"] .unlock-title {
-  color: #fbd38d;
 }
 
 .logs-modern {
@@ -539,10 +453,93 @@ input[type='password']::-ms-clear {
   100% { background-position: -200% 0; }
 }
 
+.actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.password-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  height: 48px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--input-bg);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.password-field:focus-within {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.15);
+}
+
+.password-field input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-size: 1rem;
+  outline: none;
+  padding: 0;
+  height: 100%;
+  color: var(--text-primary);
+}
+
+.password-toggle {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  color: var(--text-muted);
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.password-toggle:hover {
+  color: var(--text-primary);
+}
+
+input[type='password']::-ms-reveal,
+input[type='password']::-ms-clear {
+  display: none;
+}
+
+.unlock-card {
+  background: #fffbeb;
+  border: 1px solid #f6ad55;
+}
+
+.unlock-title {
+  font-size: 1rem;
+  margin-bottom: 12px;
+  color: #744210;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+[data-theme="dark"] .unlock-card {
+  background: #2d1b0e;
+  border-color: #b7791f;
+}
+
+[data-theme="dark"] .unlock-title {
+  color: #fbd38d;
+}
+
 @media (max-width: 600px) {
   .form-row { flex-direction: column; align-items: stretch; }
   .checkbox-grid { grid-template-columns: 1fr; }
   .participant-item { flex-wrap: wrap; }
   .participant-amount { text-align: left; min-width: auto; }
-  .log-item { flex-direction: column; align-items: flex-start; }
 }

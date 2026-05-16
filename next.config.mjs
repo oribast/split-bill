@@ -1,12 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  experimental: {
-    serverComponentsExternalPackages: ['pg'],
-  },
+  serverExternalPackages: ['pg'],
   webpack: (config, { isServer }) => {
-    if (isServer) {
-      config.externals.push('@neondatabase/serverless');
+    if (!isServer) {
+      config.resolve.alias['@neondatabase/serverless'] = false;
     }
     return config;
   },
