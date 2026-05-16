@@ -13,12 +13,11 @@ const addParticipantSchema = z.object({
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const roomId = params.id;
   
-  // Проверка авторизации (Admin или любой участник комнаты может добавлять? Обычно только админ)
-  // По ТЗ: "POST ... добавление участника". Не указано ограничение, но логично только для Admin.
-  const { auth, response } = await getAuthContext(roomId);
+  const { role, response } = await getAuthContext(roomId, req);
   if (response) return response;
-  if (auth?.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+
+  if (role !== 'admin') {
+    return NextResponse.json({ error: 'Только создатель может удалять участников' }, { status: 403 });
   }
 
   try {
