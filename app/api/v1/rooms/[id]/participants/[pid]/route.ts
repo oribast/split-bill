@@ -12,7 +12,6 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
   const { role, participantId, response } = await getAuthContext(roomId, req);
   if (response) return response;
 
-  // Доступ: админ ИЛИ сам участник (через X-Participant-Key)
   if (role !== 'admin' && !(role === 'participant' && participantId === pid)) {
     return NextResponse.json({ error: 'Доступ запрещён' }, { status: 403 });
   }
@@ -43,7 +42,6 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     return NextResponse.json({ error: 'Только создатель может удалять участников' }, { status: 403 });
   }
 
-  // ✅ Защита: нельзя удалить последнего участника
   const count = await db.$count(participants, eq(participants.roomId, roomId));
   if (count <= 1) {
     return NextResponse.json({ error: 'last_participant' }, { status: 409 });

@@ -12,11 +12,15 @@ const individualExpenseSchema = z.object({
   targetParticipantId: z.string().uuid(),
 });
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
-  const roomId = params.id;
-  const { auth, response } = await getAuthContext(roomId);
+export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id: roomId } = await params;
+
+  // ✅ Исправлено: передаём req, используем role вместо auth, убран дублирующий if
+  const { role, response } = await getAuthContext(roomId, req);
   if (response) return response;
-  if (!auth) return response!; 
+  if (role !== 'admin') {
+    return NextResponse.json({ error: 'Доступ запрещён' }, { status: 403 });
+  }
 
   const idempotencyKey = req.headers.get('x-idempotency-key');
 
@@ -48,7 +52,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       }
     }
 
-    // ✅ Убрали transaction, выполняем последовательно
+    // ✅ Создание события и записи
     const [newEvent] = await db.insert(events).values({
       roomId,
       description,

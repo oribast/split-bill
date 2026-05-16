@@ -15,9 +15,11 @@ const sharedExpenseSchema = z.object({
 
 export async function POST(req: Request, { params }: { params: { id: string } }) {
   const roomId = params.id;
-  const { auth, response } = await getAuthContext(roomId);
+  const { role, response } = await getAuthContext(roomId, req);
   if (response) return response;
-  if (!auth) return response!; 
+  if (role !== 'admin') {
+    return NextResponse.json({ error: 'Доступ запрещён' }, { status: 403 });
+  }
 
   const idempotencyKey = req.headers.get('x-idempotency-key');
   
