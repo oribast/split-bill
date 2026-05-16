@@ -19,13 +19,11 @@ async function getRoom(id: string) {
       }
     }
   });
-
   return room;
 }
 
 export default async function RoomPage({ params }: { params: { id: string } }) {
   const room = await getRoom(params.id);
   if (!room) notFound();
-
   return <RoomClient initialData={room} roomId={params.id} />;
 }
