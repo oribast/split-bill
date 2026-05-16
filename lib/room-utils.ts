@@ -1,19 +1,25 @@
 export const formatDate = (val: unknown): string => {
   if (val == null) return "—";
   
-  let date: Date | null = null;
-  if (val instanceof Date) date = val;
-  else if (typeof val === "number") date = new Date(val);
-  else if (typeof val === "string") {
-    const normalized = val.includes(" ") && !val.includes("T") ? val.replace(" ", "T") : val;
-    date = new Date(normalized);
+  let date: Date;
+  if (val instanceof Date) {
+    date = val;
+  } else if (typeof val === "number") {
+    date = new Date(val);
+  } else if (typeof val === "string") {
+    date = new Date(val.includes(" ") && !val.includes("T") ? val.replace(" ", "T") : val);
+  } else {
+    return "—";
   }
-  
-  if (!date || isNaN(date.getTime())) return "—";
-  
+
+  if (isNaN(date.getTime())) return "—";
+
   return date.toLocaleString("ru-RU", {
-    day: "2-digit", month: "2-digit", year: "numeric",
-    hour: "2-digit", minute: "2-digit"
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 };
 

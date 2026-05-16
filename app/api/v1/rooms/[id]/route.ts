@@ -3,7 +3,6 @@ import { db } from '@/db';
 import { rooms } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { getAuthContext } from '@/lib/auth';
-import { serializeDates } from '@/lib/serialize';
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const roomId = params.id;
@@ -27,7 +26,23 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  return NextResponse.json({ room: serializeDates(room) });
+  const safeIso = (val: Date | string | null | undefined): string | null => {
+    if (!val) return null;
+    const d = val instanceof Date ? val : new Date(val);
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  };
+
+  return NextResponse.json({
+    room: {
+      ...room,
+      createdAt: safeIso(room.createdAt),
+      events: room.events.map(ev => ({
+        ...ev,
+        createdAt: safeIso(ev.createdAt),
+        revertedAt: safeIso(ev.revertedAt),
+      }))
+    }
+  });
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {
