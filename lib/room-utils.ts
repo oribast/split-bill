@@ -1,13 +1,22 @@
-export const formatDate = (val: any) => {
-  if (!val) return "—";
-  try {
-    const d = typeof val === "string" ? new Date(val) : val;
-    if (!(d instanceof Date) || isNaN(d.getTime())) return "—";
-    return d.toLocaleString("ru-RU", {
-      day: "2-digit", month: "2-digit", year: "numeric",
-      hour: "2-digit", minute: "2-digit"
-    });
-  } catch { return "—"; }
+export const formatDate = (val: any): string => {
+  if (val == null) return "—";
+  
+  let date: Date | null = null;
+  if (val instanceof Date) {
+    date = val;
+  } else if (typeof val === "number") {
+    date = new Date(val);
+  } else if (typeof val === "string") {
+    const normalized = val.includes(" ") && !val.includes("T") ? val.replace(" ", "T") : val;
+    date = new Date(normalized);
+  }
+  
+  if (!date || isNaN(date.getTime())) return "—";
+  
+  return date.toLocaleString("ru-RU", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit"
+  });
 };
 
 export const parseDescription = (desc: string) => {

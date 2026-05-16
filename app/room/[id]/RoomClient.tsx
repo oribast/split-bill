@@ -1,11 +1,11 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import toast from "react-hot-toast";
 import { calculateFinances, Finances } from "@/lib/calculations";
 import { Room } from "@/lib/types";
-import { fmt } from "@/lib/room-utils";
+import { useTheme } from '@/hooks/use-theme';
 
 import RoomHeader from "@/components/room/RoomHeader";
 import UnlockForm from "@/components/room/UnlockForm";
@@ -34,9 +34,12 @@ const fetcher = async (url: string) => {
 
 export default function RoomClient({ initialData, roomId }: { initialData: Room; roomId: string }) {
   const router = useRouter();
-  const { data: room, mutate, isLoading, error } = useSWR<Room>(`/api/v1/rooms/${roomId}`, fetcher, { fallbackData: initialData, revalidateOnFocus: false });
+  const { data: room, mutate, isLoading, error } = useSWR<Room>(`/api/v1/rooms/${roomId}`, fetcher, {
+    fallbackData: initialData,
+    revalidateOnFocus: false,
+  });
 
-  const [theme, setTheme] = useState("light");
+  const { theme, toggleTheme, mounted } = useTheme();
   const [isProtected, setIsProtected] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(true);
   const [showUnlockForm, setShowUnlockForm] = useState(false);
@@ -56,11 +59,6 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    setTheme(document.documentElement.getAttribute("data-theme") || "light");
-  }, []);
-
-  useEffect(() => {
     if (!room) return;
     setIsProtected(!!room.passwordHash);
     if (room.passwordHash && typeof window !== "undefined") {
@@ -72,13 +70,6 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
       setShowUnlockForm(false);
     }
   }, [room, roomId]);
-
-  const toggleTheme = () => {
-    const next = theme === "light" ? "dark" : "light";
-    setTheme(next);
-    document.documentElement.setAttribute("data-theme", next);
-    localStorage.setItem("theme", next);
-  };
 
   const getHeaders = () => {
     const h: HeadersInit = { "Content-Type": "application/json" };
@@ -138,18 +129,27 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
   const removeParticipant = async (pid: string) => {
     if (!isUnlocked) return toast.error("Комната защищена паролем");
     const p = room?.participants.find(x => x.id === pid);
-    if (!window.confirm(`Удалить ${p?.name || "участника"}?`)) return;
+    if (!window.confirm(`Удалить ${p?.name || "участника"}? Расходы будут перераспределены.`)) return;
+    
     setSaving(true);
     try {
       const res = await fetch(`/api/v1/rooms/${roomId}/participants/${pid}`, { method: "DELETE", headers: getHeaders() });
       if (handleFetchError(res)) return;
+      
       if (res.ok) {
         toast.success(`${p?.name || "Участник"} удалён`);
+        // Оптимистичное обновление списков
         setSelectedIds(prev => prev.filter(sid => sid !== pid));
-        if (selectedId === pid) setSelectedId(""); if (payerId === pid) setPayerId(""); if (sharedPayerId === pid) setSharedPayerId("");
+        if (selectedId === pid) setSelectedId("");
+        if (payerId === pid) setPayerId("");
+        if (sharedPayerId === pid) setSharedPayerId("");
+        // Перезагружаем данные комнаты
         mutate();
-      } else toast.error("Ошибка удаления");
-    } catch { toast.error("Ошибка удаления"); } finally { setSaving(false); }
+      } else {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Ошибка удаления");
+      }
+    } catch { toast.error("Ошибка сети"); } finally { setSaving(false); }
   };
 
   const updateName = (pid: string, name: string) => mutate(prev => prev ? { ...prev, participants: prev.participants.map(p => p.id === pid ? { ...p, name } : p) } : prev, { revalidate: false });
@@ -182,7 +182,7 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
       const desc = `Распределено ${amount.toFixed(2)} ₽ (${selectedIds.length} чел.: ${names})${notePart}`;
       const res = await fetch(`/api/v1/rooms/${roomId}/expenses/shared`, { method: "POST", headers: { ...getHeaders(), "X-Idempotency-Key": crypto.randomUUID() }, body: JSON.stringify({ description: desc, amount: Math.round(amount * 100), payerId: sharedPayerId, participantIds: selectedIds }) });
       if (handleFetchError(res)) return;
-      if (res.ok) { toast.success(`Распределено ${amount.toFixed(2)} ₽`); setSharedAmount(""); setSharedNote(""); setSharedPayerId(""); setSelectedIds([]); mutate(); }
+      if (res.ok) { toast.success(`Распеределено ${amount.toFixed(2)} ₽`); setSharedAmount(""); setSharedNote(""); setSharedPayerId(""); setSelectedIds([]); mutate(); }
       else toast.error("Ошибка распределения");
     } catch { toast.error("Ошибка сети"); } finally { setSaving(false); }
   };
@@ -226,22 +226,77 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
 
   const finances: Finances = room ? calculateFinances(room.participants, room.events) : { balances: {}, consumed: {}, paid: {} };
 
+  // Рендерим только после монтирования, чтобы избежать гидратационных конфликтов с темой
+  if (!mounted) return null;
+
   return (
     <div className="mx-auto max-w-6xl px-3 py-5">
-      <RoomHeader roomId={roomId} saving={saving} theme={theme} toggleTheme={toggleTheme} isProtected={isProtected} isUnlocked={isUnlocked} lockRoom={lockRoom} setShowUnlockForm={setShowUnlockForm} copyLink={copyLink} />
+      <RoomHeader 
+        roomId={roomId} 
+        saving={saving} 
+        theme={theme} 
+        toggleTheme={toggleTheme} 
+        isProtected={isProtected} 
+        isUnlocked={isUnlocked} 
+        lockRoom={lockRoom} 
+        setShowUnlockForm={setShowUnlockForm} 
+        copyLink={copyLink} 
+      />
       
       {isProtected && !isUnlocked && showUnlockForm && (
-        <UnlockForm unlockPassword={unlockPassword} setUnlockPassword={setUnlockPassword} showUnlockPwd={showUnlockPwd} setShowUnlockPwd={setShowUnlockPwd} unlockError={unlockError} tryUnlock={tryUnlock} />
+        <UnlockForm 
+          unlockPassword={unlockPassword} 
+          setUnlockPassword={setUnlockPassword} 
+          showUnlockPwd={showUnlockPwd} 
+          setShowUnlockPwd={setShowUnlockPwd} 
+          unlockError={unlockError} 
+          tryUnlock={tryUnlock} 
+        />
       )}
 
       <div className="flex flex-col lg:flex-row gap-5">
-        <ParticipantsSidebar participants={room?.participants || []} isUnlocked={isUnlocked} newName={newName} setNewName={setNewName} addParticipant={addParticipant} updateName={updateName} saveName={saveName} removeParticipant={removeParticipant} finances={finances} />
+        <ParticipantsSidebar 
+          participants={room?.participants || []} 
+          isUnlocked={isUnlocked} 
+          newName={newName} 
+          setNewName={setNewName} 
+          addParticipant={addParticipant} 
+          updateName={updateName} 
+          saveName={saveName} 
+          removeParticipant={removeParticipant} 
+          finances={finances} 
+        />
         
         <main className="flex-1 min-w-0 space-y-5">
           {isUnlocked && room && room.participants.length > 0 && (
             <>
-              <IndividualExpenseForm participants={room.participants} selectedId={selectedId} setSelectedId={setSelectedId} payerId={payerId} setPayerId={setPayerId} individualAmount={individualAmount} setIndividualAmount={setIndividualAmount} individualNote={individualNote} setIndividualNote={setIndividualNote} addToParticipant={addToParticipant} />
-              <SharedExpenseForm participants={room.participants} sharedAmount={sharedAmount} setSharedAmount={setSharedAmount} sharedPayerId={sharedPayerId} setSharedPayerId={setSharedPayerId} sharedNote={sharedNote} setSharedNote={setSharedNote} selectedIds={selectedIds} toggleSelectedId={toggleSelectedId} selectAll={selectAll} deselectAll={deselectAll} sharedPreview={sharedPreview} distributeShared={distributeShared} />
+              <IndividualExpenseForm 
+                participants={room.participants} 
+                selectedId={selectedId} 
+                setSelectedId={setSelectedId} 
+                payerId={payerId} 
+                setPayerId={setPayerId} 
+                individualAmount={individualAmount} 
+                setIndividualAmount={setIndividualAmount} 
+                individualNote={individualNote} 
+                setIndividualNote={setIndividualNote} 
+                addToParticipant={addToParticipant} 
+              />
+              <SharedExpenseForm 
+                participants={room.participants} 
+                sharedAmount={sharedAmount} 
+                setSharedAmount={setSharedAmount} 
+                sharedPayerId={sharedPayerId} 
+                setSharedPayerId={setSharedPayerId} 
+                sharedNote={sharedNote} 
+                setSharedNote={setSharedNote} 
+                selectedIds={selectedIds} 
+                toggleSelectedId={toggleSelectedId} 
+                selectAll={selectAll} 
+                deselectAll={deselectAll} 
+                sharedPreview={sharedPreview} 
+                distributeShared={distributeShared} 
+              />
             </>
           )}
           {room && room.participants.length > 0 && <TotalsBlock participants={room.participants} finances={finances} />}

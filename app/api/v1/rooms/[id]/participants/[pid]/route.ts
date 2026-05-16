@@ -38,27 +38,28 @@ export async function PUT(req: Request, { params }: { params: { id: string; pid:
   }
 }
 
-export async function DELETE(req: Request, { params }: { params: { id: string; pid: string } }) {
-  const roomId = params.id;
-  const pid = params.pid;
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ roomId: string; participantId: string }> }
+) {
+  const { roomId, participantId } = await params;
 
-  const { auth, response } = await getAuthContext(roomId);
-  if (response) return response;
-  if (auth?.role !== 'admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  try {
+    await db
+      .delete(participants)
+      .where(
+        and(
+          eq(participants.roomId, roomId),
+          eq(participants.id, participantId)
+        )
+      );
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('❌ Ошибка удаления участника:', error);
+    return NextResponse.json(
+      { error: 'Не удалось удалить участника' },
+      { status: 500 }
+    );
   }
-
-  // Проверка: не последний ли участник?
-  const allParticipants = await db.query.participants.findMany({
-    where: eq(participants.roomId, roomId)
-  });
-
-  if (allParticipants.length <= 1) {
-    return NextResponse.json({ error: 'Cannot delete last participant', code: 'last_participant' }, { status: 409 });
-  }
-
-  await db.delete(participants)
-    .where(and(eq(participants.id, pid), eq(participants.roomId, roomId)));
-
-  return NextResponse.json({ success: true });
 }
