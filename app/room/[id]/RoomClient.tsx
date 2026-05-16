@@ -1,10 +1,32 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import toast from "react-hot-toast";
 import { calculateFinances } from "@/lib/calculations";
 import { Room } from "@/lib/types";
+
+// --- Утилиты ---
+const formatDate = (val: string | Date) => {
+  try {
+    const d = typeof val === "string" ? new Date(val) : val;
+    if (isNaN(d.getTime())) return "—";
+    return d.toLocaleString("ru-RU", {
+      day: "2-digit", month: "2-digit", year: "numeric",
+      hour: "2-digit", minute: "2-digit"
+    });
+  } catch { return "—"; }
+};
+
+const parseDescription = (desc: string) => {
+  // Извлекаем комментарий, если он в конце в скобках и не является списком участников
+  const match = desc.match(/^(.*?)\s*\(([^)]+)\)$/);
+  if (!match) return { main: desc, comment: null };
+  const [, main, potentialComment] = match;
+  // Игнорируем технические скобки вроде "(3 чел.: ...)"
+  if (/^\d+\s*чел\.?:/.test(potentialComment)) return { main: desc, comment: null };
+  return { main: main.trim(), comment: potentialComment.trim() };
+};
 
 const fetcher = async (url: string) => {
   const roomId = url.split("/").pop();
@@ -40,13 +62,12 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
   const [unlockError, setUnlockError] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Forms State
+  // Forms
   const [newName, setNewName] = useState("");
   const [selectedId, setSelectedId] = useState("");
   const [individualAmount, setIndividualAmount] = useState("");
   const [individualNote, setIndividualNote] = useState("");
   const [payerId, setPayerId] = useState("");
-
   const [sharedAmount, setSharedAmount] = useState("");
   const [sharedNote, setSharedNote] = useState("");
   const [sharedPayerId, setSharedPayerId] = useState("");
@@ -54,8 +75,7 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const t = document.documentElement.getAttribute("data-theme") || "light";
-    setTheme(t);
+    setTheme(document.documentElement.getAttribute("data-theme") || "light");
   }, []);
 
   useEffect(() => {
@@ -176,7 +196,6 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
   };
 
   const updateName = (pid: string, name: string) => {
-    // Оптимистичное обновление UI
     mutate(prev => prev ? {
       ...prev,
       participants: prev.participants.map(p => p.id === pid ? { ...p, name } : p)
@@ -202,7 +221,8 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
     setSaving(true);
     try {
       const p = room?.participants.find(x => x.id === selectedId);
-      const desc = `Начислено ${amount.toFixed(2)} ₽ участнику ${p?.name || ""} ${individualNote ? `(${individualNote})` : ''}`;
+      const notePart = individualNote.trim() ? ` (${individualNote.trim()})` : "";
+      const desc = `Начислено ${amount.toFixed(2)} ₽ участнику ${p?.name || ""}${notePart}`;
       const res = await fetch(`/api/v1/rooms/${roomId}/expenses/individual`, {
         method: "POST", headers: { ...getHeaders(), "X-Idempotency-Key": crypto.randomUUID() },
         body: JSON.stringify({ description: desc, amount: Math.round(amount * 100), payerId, targetParticipantId: selectedId })
@@ -226,7 +246,8 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
     setSaving(true);
     try {
       const names = room?.participants.filter(p => selectedIds.includes(p.id)).map(p => p.name).join(", ") || "";
-      const desc = `Распределено ${amount.toFixed(2)} ₽ (${selectedIds.length} чел.: ${names}) ${sharedNote ? `(${sharedNote})` : ''}`;
+      const notePart = sharedNote.trim() ? ` (${sharedNote.trim()})` : "";
+      const desc = `Распределено ${amount.toFixed(2)} ₽ (${selectedIds.length} чел.: ${names})${notePart}`;
       const res = await fetch(`/api/v1/rooms/${roomId}/expenses/shared`, {
         method: "POST", headers: { ...getHeaders(), "X-Idempotency-Key": crypto.randomUUID() },
         body: JSON.stringify({ description: desc, amount: Math.round(amount * 100), payerId: sharedPayerId, participantIds: selectedIds })
@@ -268,7 +289,6 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
       .catch(() => toast.error("Не удалось скопировать"));
   };
 
-  // Превью распределения
   const sharedPreview = (() => {
     if (!sharedAmount || selectedIds.length === 0) return null;
     const amount = parseFloat(sharedAmount);
@@ -299,8 +319,9 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
 
   return (
     <div className="container">
-      <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"8px", flexWrap:"wrap", gap:"8px"}}>
-        <h1>Комната: {roomId}</h1>
+      {/* Header */}
+      <div style={{display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:"16px", flexWrap:"wrap", gap:"12px"}}>
+        <h1 style={{marginBottom:0}}>Комната: {roomId}</h1>
         <div style={{display:"flex", alignItems:"center", gap:"8px"}}>
           {saving && <span style={{color:"var(--text-muted)", fontSize:"0.875rem"}}>Сохранение...</span>}
           <button className="theme-toggle btn-small" onClick={toggleTheme} title={theme==="light"?"Тёмная тема":"Светлая тема"}>
@@ -317,6 +338,7 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
         </div>
       </div>
 
+      {/* Unlock Form */}
       {isProtected && !isUnlocked && showUnlockForm && (
         <div className="card unlock-card">
           <h3 className="unlock-title">🔒 Введите пароль комнаты</h3>
@@ -334,9 +356,11 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
         </div>
       )}
 
-      <div style={{display:"grid", gridTemplateColumns:"1fr", gap:"24px"}} className="lg:grid-cols-3">
-        {/* SIDEBAR: Участники */}
-        <div className="lg:col-span-1">
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* LEFT SIDEBAR: Участники + Балансы */}
+        <aside className="lg:col-span-4">
           <div className="card">
             <h2>Участники</h2>
             {!isUnlocked ? null : (
@@ -354,31 +378,36 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
               <div className="participants-list">
                 {room.participants.map(p=>{
                   const bal = finances.balances[p.id] || 0;
-                  const cons = finances.consumed[p.id] || 0;
+                  const balColor = bal > 0 ? "text-red-500" : bal < 0 ? "text-green-500" : "text-muted";
+                  const balLabel = bal > 0 ? "должен" : bal < 0 ? "вам должны" : "расчёт";
                   return (
-                    <div key={p.id} className="participant-item">
-                      {isUnlocked ? (
-                        <input type="text" value={p.name} onChange={(e)=>updateName(p.id, e.target.value)} onBlur={(e)=>saveName(p.id, e.target.value)} />
-                      ) : (
-                        <span style={{flex:1, fontWeight:500}}>{p.name}</span>
-                      )}
-                      <div style={{textAlign:"right", minWidth:"90px"}}>
-                        <div className="participant-amount">{fmt(cons)}</div>
-                        <div style={{fontSize:"0.7rem", color:"var(--text-muted)"}}>потрачено</div>
+                    <div key={p.id} className="participant-item" style={{flexDirection:"column", alignItems:"stretch", gap:"8px"}}>
+                      <div style={{display:"flex", justifyContent:"space-between", alignItems:"center"}}>
+                        {isUnlocked ? (
+                          <input type="text" value={p.name} onChange={(e)=>updateName(p.id, e.target.value)} onBlur={(e)=>saveName(p.id, e.target.value)} style={{flex:1}} />
+                        ) : (
+                          <span style={{flex:1, fontWeight:500}}>{p.name}</span>
+                        )}
+                        {!isUnlocked ? null : (
+                          <button className="btn-secondary btn-small" onClick={()=>removeParticipant(p.id)} style={{marginLeft:"8px"}}>Удалить</button>
+                        )}
                       </div>
-                      {!isUnlocked ? null : (
-                        <button className="btn-secondary btn-small" onClick={()=>removeParticipant(p.id)}>Удалить</button>
-                      )}
+                      <div style={{display:"flex", justifyContent:"space-between", alignItems:"baseline"}}>
+                        <span style={{fontSize:"0.8rem", color:"var(--text-muted)"}}>Баланс:</span>
+                        <span className={`participant-amount ${balColor}`} style={{minWidth:"auto"}}>
+                          {bal > 0 ? "+" : ""}{fmt(bal)} <span style={{fontSize:"0.7rem", fontWeight:400, color:"var(--text-muted)"}}>({balLabel})</span>
+                        </span>
+                      </div>
                     </div>
                   );
                 })}
               </div>
             )}
           </div>
-        </div>
+        </aside>
 
-        {/* MAIN: Формы, Итого, История */}
-        <div className="lg:col-span-2 space-y-6">
+        {/* RIGHT MAIN: Формы, Итого, История */}
+        <main className="lg:col-span-8 space-y-6">
           {!isUnlocked || !room || room.participants.length===0 ? null : (
             <>
               <div className="card">
@@ -421,23 +450,19 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
             </>
           )}
 
-          {/* БЛОК ИТОГО */}
+          {/* БЛОК ИТОГО: Сколько потрачено на каждого */}
           {room && room.participants.length > 0 && (
             <div className="card">
-              <h2>Итого к расчёту</h2>
+              <h2>Итого: потрачено на участников</h2>
               <p style={{fontSize:"0.85rem", color:"var(--text-muted)", marginBottom:"12px"}}>
-                Положительная сумма = участник должен вернуть. Отрицательная = участнику должны вернуть.
+                Сумма всех долей, начисленных на каждого участника (независимо от того, кто платил).
               </p>
               {room.participants.map(p => {
-                const bal = finances.balances[p.id] || 0;
-                const color = bal > 0 ? "text-red-500" : bal < 0 ? "text-green-500" : "text-muted";
-                const label = bal > 0 ? "должен" : bal < 0 ? "ему должны" : "расчёт";
+                const cons = finances.consumed[p.id] || 0;
                 return (
                   <div key={p.id} className="total-row">
                     <span>{p.name}</span>
-                    <span style={{fontWeight:600}} className={color}>
-                      {bal > 0 ? "+" : ""}{fmt(bal)} <span style={{fontSize:"0.75rem", fontWeight:400, color:"var(--text-muted)"}}>({label})</span>
-                    </span>
+                    <span style={{fontWeight:600}}>{fmt(cons)}</span>
                   </div>
                 );
               })}
@@ -456,21 +481,20 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
             ) : (
               <div className="logs-modern">
                 {room.events.map(log=>{
-                  const date = new Date(log.createdAt);
-                  const dateStr = date.toLocaleDateString("ru-RU", {day:"numeric", month:"short", year:"numeric"});
-                  const timeStr = date.toLocaleTimeString("ru-RU", {hour:"2-digit", minute:"2-digit"});
+                  const { main, comment } = parseDescription(log.description);
                   return (
                     <div key={log.id} className={`log-card ${log.type} ${log.isReverted?"reverted":""}`}>
                       <div className="log-card-header">
                         <div className="log-card-meta">
                           <span className={`log-badge ${log.type}`}>{log.type==="individual"?"Индивидуальная":"Групповая"}</span>
-                          <span className="log-date">{dateStr} · {timeStr}{log.isReverted && <span className="reverted-label"> · Отменено</span>}</span>
+                          <span className="log-date">{formatDate(log.createdAt)}{log.isReverted && <span className="reverted-label"> · Отменено</span>}</span>
                         </div>
                         {isUnlocked && !log.isReverted && <button className="btn-secondary btn-small" onClick={()=>handleRollback(log.id)}>Откатить</button>}
                       </div>
                       <div className="log-card-body">
-                        <div className="log-title">{log.description}</div>
+                        <div className="log-title">{main}</div>
                         {log.payer?.name && <div className="log-payer"><span className="log-label">Оплатил:</span> {log.payer.name}</div>}
+                        {comment && <div className="log-note-modern"><span className="log-label">Комментарий:</span> {comment}</div>}
                       </div>
                       {log.entries && log.entries.length>0 && (
                         <div className="log-entries-modern">
@@ -486,7 +510,7 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room;
               </div>
             )}
           </div>
-        </div>
+        </main>
       </div>
     </div>
   );
