@@ -1,42 +1,16 @@
-// lib/types.ts
+import { InferSelectModel } from 'drizzle-orm';
+import { rooms, participants, events, eventEntries } from '@/db/schema';
 
-export interface Participant { 
-  id: string; 
-  name: string; 
-  participantKey?: string;
-  roomId?: string;
-  createdAt?: Date | string;
-}
+export type Room = InferSelectModel<typeof rooms>;
+export type Participant = InferSelectModel<typeof participants>;
+export type Event = InferSelectModel<typeof events>;
+export type EventEntry = InferSelectModel<typeof eventEntries>;
 
-export interface EventEntry { 
-  id?: string;
-  eventId?: string;
-  participantId: string; 
-  amount: number; 
-}
-
-export interface Event { 
-  id: string; 
-  roomId?: string;
-  description: string; 
-  amount: number; 
-  type: 'shared' | 'individual'; 
-  payerId: string;
-  targetParticipantId: string | null; // ✅ Drizzle возвращает null, не undefined
-  isReverted: boolean;
-  createdAt: Date | string; // ✅ Drizzle возвращает Date
-  revertedAt: Date | string | null;
-  entries: EventEntry[];
-  payer?: { id: string; name: string } | null;
-  targetParticipant?: { id: string; name: string } | null;
-}
-
-export interface Room {
-  id: string;
-  name: string;
-  editKey?: string;
-  passwordHash?: string | null;
-  createdAt?: Date | string;
+export type RoomWithRelations = Room & {
   participants: Participant[];
-  events: Event[];
-}
+  events: (Event & {
+    entries: EventEntry[];
+    payer: Participant | null;
+    targetParticipant: Participant | null;
+  })[];
+};

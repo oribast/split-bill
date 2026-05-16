@@ -3,9 +3,10 @@ import RoomClient from './RoomClient';
 import { db } from '@/db';
 import { rooms } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { RoomWithRelations } from '@/lib/types';
 
 async function getRoom(id: string) {
-  const room = await db.query.rooms.findFirst({
+  return db.query.rooms.findFirst({
     where: eq(rooms.id, id),
     with: {
       participants: true,
@@ -19,11 +20,12 @@ async function getRoom(id: string) {
       }
     }
   });
-  return room;
 }
-
-export default async function RoomPage({ params }: { params: { id: string } }) {
-  const room = await getRoom(params.id);
+export default async function RoomPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const room = await getRoom(id);
+  
   if (!room) notFound();
-  return <RoomClient initialData={room} roomId={params.id} />;
+  
+  return <RoomClient initialData={room as RoomWithRelations} roomId={id} />;
 }
