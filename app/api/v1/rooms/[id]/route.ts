@@ -26,23 +26,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  const safeIso = (val: Date | string | null | undefined): string | null => {
-    if (!val) return null;
-    const d = val instanceof Date ? val : new Date(val);
-    return isNaN(d.getTime()) ? null : d.toISOString();
-  };
-
-  return NextResponse.json({
-    room: {
-      ...room,
-      createdAt: safeIso(room.createdAt),
-      events: room.events.map(ev => ({
-        ...ev,
-        createdAt: safeIso(ev.createdAt),
-        revertedAt: safeIso(ev.revertedAt),
-      }))
-    }
-  });
+  return NextResponse.json({ room });
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {

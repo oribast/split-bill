@@ -30,14 +30,14 @@ export const events = pgTable('events', {
   payerId: uuid('payer_id').references(() => participants.id, { onDelete: 'set null' }),
   targetParticipantId: uuid('target_participant_id').references(() => participants.id, { onDelete: 'set null' }),
   isReverted: boolean('is_reverted').default(false).notNull(),
-  revertedAt: timestamp('reverted_at'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  revertedAt: timestamp('reverted_at', { withTimezone: true }),
 });
 
 export const eventEntries = pgTable('event_entries', {
   id: uuidPk('id'), 
   eventId: uuid('event_id').notNull(),
-  participantId: uuid('participant_id').notNull(),
+  participantId: uuid('participant_id').references(() => participants.id, { onDelete: 'set null' }),
   amount: bigint('amount', { mode: 'number' }).notNull(),
 });
 

@@ -7,19 +7,15 @@ export const formatDate = (val: unknown): string => {
   } else if (typeof val === "number") {
     date = new Date(val);
   } else if (typeof val === "string") {
+    // Neon/Drizzle могут отдавать "YYYY-MM-DD HH:mm:ss" или ISO
     date = new Date(val.includes(" ") && !val.includes("T") ? val.replace(" ", "T") : val);
   } else {
     return "—";
   }
 
-  if (isNaN(date.getTime())) return "—";
-
-  return date.toLocaleString("ru-RU", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
+  return isNaN(date.getTime()) ? "—" : date.toLocaleString("ru-RU", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit"
   });
 };
 

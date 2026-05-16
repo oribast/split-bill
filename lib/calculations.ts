@@ -36,6 +36,7 @@ export function calculateFinances(participants: Participant[], events: EventWith
     // Групповое распределение
     else if (ev.type === 'shared' && ev.entries && ev.entries.length > 0) {
       ev.entries.forEach(entry => {
+        if (!entry.participantId) return; // ✅ Пропускаем удалённых участников
         consumed[entry.participantId] = (consumed[entry.participantId] || 0) + entry.amount;
         balances[entry.participantId] = (balances[entry.participantId] || 0) + entry.amount;
       });
