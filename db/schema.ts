@@ -1,8 +1,11 @@
 import { pgTable, uuid, varchar, bigint, timestamp, boolean } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
+// Вспомогательная функция для UUID с автогенерацией
+const uuidPk = () => uuid().primaryKey().defaultRandom();
+
 export const rooms = pgTable('rooms', {
-  id: uuid('id').primaryKey(),
+  id: uuidPk(), // Теперь имеет default
   name: varchar('name', { length: 255 }).notNull(),
   editKey: uuid('edit_key').notNull().unique(),
   passwordHash: varchar('password_hash', { length: 255 }),
@@ -10,7 +13,7 @@ export const rooms = pgTable('rooms', {
 });
 
 export const participants = pgTable('participants', {
-  id: uuid('id').primaryKey(),
+  id: uuidPk(), // Теперь имеет default
   roomId: uuid('room_id').notNull(),
   name: varchar('name', { length: 255 }).notNull(),
   participantKey: uuid('participant_key').notNull().unique(),
@@ -18,7 +21,7 @@ export const participants = pgTable('participants', {
 });
 
 export const events = pgTable('events', {
-  id: uuid('id').primaryKey(),
+  id: uuidPk(), // Теперь имеет default
   roomId: uuid('room_id').notNull(),
   description: varchar('description', { length: 255 }).notNull(),
   amount: bigint('amount', { mode: 'number' }).notNull(),
@@ -31,7 +34,7 @@ export const events = pgTable('events', {
 });
 
 export const eventEntries = pgTable('event_entries', {
-  id: uuid('id').primaryKey(),
+  id: uuidPk(), // Теперь имеет default
   eventId: uuid('event_id').notNull(),
   participantId: uuid('participant_id').notNull(),
   amount: bigint('amount', { mode: 'number' }).notNull(),
