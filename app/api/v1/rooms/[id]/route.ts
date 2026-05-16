@@ -3,6 +3,7 @@ import { db } from '@/db';
 import { rooms } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { getAuthContext } from '@/lib/auth';
+import { serializeDates } from '@/lib/serialize';
 
 export async function GET(req: Request, { params }: { params: { id: string } }) {
   const roomId = params.id;
@@ -26,7 +27,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
     return NextResponse.json({ error: 'Not found' }, { status: 404 });
   }
 
-  return NextResponse.json({ room });
+  return NextResponse.json({ room: serializeDates(room) });
 }
 
 export async function DELETE(req: Request, { params }: { params: { id: string } }) {

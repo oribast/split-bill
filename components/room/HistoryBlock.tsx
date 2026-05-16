@@ -1,7 +1,7 @@
 "use client";
 import { IconHistory, IconRollback } from "@/components/Icons";
 import { EventWithRelations, Participant } from "@/lib/types";
-import { fmt, formatDate, parseDescription } from "@/lib/room-utils";
+import { formatDate, parseDescription, fmt } from "@/lib/room-utils";
 
 interface Props {
   events: EventWithRelations[];
@@ -26,9 +26,7 @@ export default function HistoryBlock({ events, participants, isUnlocked, handleR
       ) : (
         <div className="logs-modern" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
           {events.map(log => {
-            const rawDate = log.createdAt ?? (log as any).created_at;
-            const dateStr = formatDate(rawDate);
-            
+            const dateStr = formatDate(log.createdAt);
             const { main, comment } = parseDescription(log.description || "");
             
             return (
@@ -54,9 +52,13 @@ export default function HistoryBlock({ events, participants, isUnlocked, handleR
                 </div>
                 <div className="log-card-body" style={{ marginBottom: "8px" }}>
                   <div className="log-title" style={{ fontSize: "0.9rem", fontWeight: 600, marginBottom: "4px" }}>{main}</div>
-                  {log.payer?.name && (
+                  {log.payer?.name ? (
                     <div className="log-payer" style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
                       <span className="log-label">Оплатил:</span> {log.payer.name}
+                    </div>
+                  ) : (
+                    <div className="log-payer" style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                      <span className="log-label">Оплатил:</span> Удалённый участник
                     </div>
                   )}
                   {comment && (

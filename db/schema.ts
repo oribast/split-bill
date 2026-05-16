@@ -28,7 +28,7 @@ export const events = pgTable('events', {
   amount: bigint('amount', { mode: 'number' }).notNull(),
   type: varchar('type', { enum: ['shared', 'individual'] }).notNull(),
   payerId: uuid('payer_id').references(() => participants.id, { onDelete: 'set null' }),
-  targetParticipantId: uuid('target_participant_id'),
+  targetParticipantId: uuid('target_participant_id').references(() => participants.id, { onDelete: 'set null' }),
   isReverted: boolean('is_reverted').default(false).notNull(),
   revertedAt: timestamp('reverted_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),

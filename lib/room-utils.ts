@@ -1,12 +1,10 @@
-export const formatDate = (val: any): string => {
+export const formatDate = (val: unknown): string => {
   if (val == null) return "—";
   
   let date: Date | null = null;
-  if (val instanceof Date) {
-    date = val;
-  } else if (typeof val === "number") {
-    date = new Date(val);
-  } else if (typeof val === "string") {
+  if (val instanceof Date) date = val;
+  else if (typeof val === "number") date = new Date(val);
+  else if (typeof val === "string") {
     const normalized = val.includes(" ") && !val.includes("T") ? val.replace(" ", "T") : val;
     date = new Date(normalized);
   }
