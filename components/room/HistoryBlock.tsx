@@ -84,3 +84,4 @@ export default function HistoryBlock({ events, participants, isUnlocked, handleR
       )}
     </div>
   );
+}
