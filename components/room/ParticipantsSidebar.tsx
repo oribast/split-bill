@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { Participant } from "@/lib/types";
 import { Finances } from "@/lib/calculations";
-// Замени импорты иконок на свои из @/components/Icons, если названия отличаются
 import { IconTrash, IconPlus, IconCheck, IconX, IconEdit } from "@/components/Icons";
 
 interface Props {
