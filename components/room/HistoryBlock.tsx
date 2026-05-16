@@ -1,10 +1,9 @@
 "use client";
 import { IconHistory, IconRollback } from "@/components/Icons";
-import { Event, Participant } from "@/lib/types";
-import { formatDate, parseDescription, fmt } from "@/lib/room-utils";
+import { EventWithRelations, Participant } from "@/lib/types";
 
 interface Props {
-  events: Event[];
+  events: EventWithRelations[];
   participants: Participant[];
   isUnlocked: boolean;
   handleRollback: (id: string) => void;
@@ -26,15 +25,9 @@ export default function HistoryBlock({ events, participants, isUnlocked, handleR
       ) : (
         <div className="logs-modern" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
           {events.map(log => {
-            // Безопасно берём дату: camelCase или snake_case
             const rawDate = log.createdAt ?? (log as any).created_at;
             const dateStr = formatDate(rawDate);
             
-            // Временный лог для отладки (удали после проверки)
-            if (!rawDate) {
-              console.warn(`⚠️ Event ${log.id} не имеет createdAt. Текущий log:`, log);
-            }
-
             const { main, comment } = parseDescription(log.description || "");
             
             return (
@@ -60,8 +53,16 @@ export default function HistoryBlock({ events, participants, isUnlocked, handleR
                 </div>
                 <div className="log-card-body" style={{ marginBottom: "8px" }}>
                   <div className="log-title" style={{ fontSize: "0.9rem", fontWeight: 600, marginBottom: "4px" }}>{main}</div>
-                  {log.payer?.name && <div className="log-payer" style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}><span className="log-label">Оплатил:</span> {log.payer.name}</div>}
-                  {comment && <div className="log-note-modern" style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "2px" }}><span className="log-label">Комментарий:</span> {comment}</div>}
+                  {log.payer?.name && (
+                    <div className="log-payer" style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+                      <span className="log-label">Оплатил:</span> {log.payer.name}
+                    </div>
+                  )}
+                  {comment && (
+                    <div className="log-note-modern" style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "2px" }}>
+                      <span className="log-label">Комментарий:</span> {comment}
+                    </div>
+                  )}
                 </div>
                 {log.entries && log.entries.length > 0 && (
                   <div className="log-entries-modern" style={{ paddingTop: "8px", borderTop: "1px solid var(--border)", marginTop: "8px" }}>
@@ -83,4 +84,3 @@ export default function HistoryBlock({ events, participants, isUnlocked, handleR
       )}
     </div>
   );
-}
