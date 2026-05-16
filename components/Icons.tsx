@@ -52,3 +52,9 @@ export const IconX: React.FC<IconProps> = ({ className = "w-5 h-5" }) => (
 export const IconEdit: React.FC<IconProps> = ({ className = "w-5 h-5" }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
 );
+export const IconKey: React.FC<IconProps> = ({ className = "w-5 h-5" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="8" cy="15" r="5"/>
+    <path d="M12.22 12.22 21 3.5 17.5 0 8.72 8.72a5.5 5.5 0 1 0 7.78 7.78l-4.22-4.28z"/>
+  </svg>
+);

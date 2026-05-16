@@ -37,6 +37,7 @@ export interface Room {
   name: string;
   editKey: string;
   passwordHash: string | null;
+  inviteCode: string;
   createdAt: Date;
 }
 
