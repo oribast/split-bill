@@ -126,13 +126,13 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
     if (!unlockPassword.trim()) return;
     setSaving(true); setUnlockError("");
     try {
-      const auth = `Basic ${btoa(`admin:${unlockPassword.trim()}`)}`;
-      const res = await fetch(`/api/v1/rooms/${roomId}`, { headers: { Authorization: auth } });
+      const authString = btoa(`admin:${unlockPassword.trim()}`);
+      const res = await fetch(`/api/v1/rooms/${roomId}`, { headers: { Authorization: `Basic ${authString}` } });
       
       if (res.status === 200) {
-        localStorage.setItem(`password_${roomId}`, btoa(unlockPassword.trim()));
+        localStorage.setItem(`password_${roomId}`, authString);
         setIsUnlocked(true); setShowUnlockForm(false); setUnlockPassword(""); setShowUnlockPwd(false);
-        toast.success("Комната разблокирована");
+        toast.success("Комната разблокирована. Вам доступны права администратора.");
         mutate();
       } else if (res.status === 401 || res.status === 403) {
         setUnlockError("Неверный пароль");
@@ -147,10 +147,12 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
   };
 
   const lockRoom = () => {
-    if (window.confirm("Заблокировать редактирование?")) {
-      if (typeof window !== "undefined") localStorage.removeItem(`password_${roomId}`);
+    if (window.confirm("Заблокировать редактирование? Вы потеряете права администратора до повторного ввода ключа или пароля.")) {
+      localStorage.removeItem(`password_${roomId}`);
+      localStorage.removeItem(`editKey_${roomId}`);
       setIsUnlocked(false); setShowUnlockForm(true); setUnlockPassword(""); setUnlockError("");
       toast("Редактирование заблокировано", { icon: "🔒" });
+      mutate();
     }
   };
 
