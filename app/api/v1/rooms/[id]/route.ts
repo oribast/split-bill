@@ -7,9 +7,6 @@ import { getAuthContext } from '@/lib/auth';
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   
-  const { role, response } = await getAuthContext(id, req);
-  if (response) return response;
-
   const room = await db.query.rooms.findFirst({
     where: eq(rooms.id, id),
     with: {
