@@ -16,6 +16,24 @@ function getHeaders(roomId: string): HeadersInit {
   return headers;
 }
 
+export async function createRoom(name: string, password?: string) {
+  const body: any = { name };
+  if (password) body.password = password;
+  
+  const res = await fetch('/api/v1/rooms', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to create room');
+  }
+  
+  return await res.json(); // { room, editKey }
+}
+
 export async function fetchRoom(roomId: string): Promise<Room> {
   const res = await fetch(`/api/v1/rooms/${roomId}`, { 
     headers: getHeaders(roomId),
