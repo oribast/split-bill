@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
 import { participants } from '@/db/schema';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, count } from 'drizzle-orm';
 import { getAuthContext } from '@/lib/auth';
 import { z } from 'zod';
 
@@ -42,8 +42,13 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     return NextResponse.json({ error: 'Только создатель может удалять участников' }, { status: 403 });
   }
 
-  const count = await db.$count(participants, eq(participants.roomId, roomId));
-  if (count <= 1) {
+  const res = await db
+    .select({ count: count() })
+    .from(participants)
+    .where(eq(participants.roomId, roomId));
+
+  const participantCount = res[0]?.count ?? 0;
+  if (participantCount <= 1) {
     return NextResponse.json({ error: 'last_participant' }, { status: 409 });
   }
 
