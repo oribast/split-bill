@@ -170,7 +170,10 @@ export default function RoomClient({ initialData, roomId }: { initialData: Room,
   };
 
   // --- Вычисления ---
-  const balances = calculateBalances(room.participants, room.events);
+  const balances = calculateBalances(
+    room.participants as Participant[], 
+    room.events as Event[]
+  );
   const totalDebt = Object.values(balances).reduce((a, b) => a + b, 0); // Должно быть 0, если все посчитано верно, но здесь это "сколько должны вернуть"
 
   // Превью шаринга
