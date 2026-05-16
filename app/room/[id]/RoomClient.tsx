@@ -230,6 +230,7 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
     <div className="mx-auto max-w-6xl px-3 py-5">
       <RoomHeader 
         roomId={roomId} 
+        roomName={room?.name || `Комната ${roomId.slice(0, 6)}`} // ✅ Фоллбэк, если имя не загрузилось
         saving={saving} 
         theme={theme} 
         toggleTheme={toggleTheme} 
