@@ -1,28 +1,36 @@
-// lib/calculations.ts
 import { Participant, Event } from './types';
 
-export interface BalanceMap {
-  [participantId: string]: number;
+export interface Finances {
+  balances: Record<string, number>; // + должен, - вам должны
+  consumed: Record<string, number>; // сколько потрачено на участника
+  paid: Record<string, number>;     // сколько участник оплатил
 }
 
-export function calculateBalances(participants: Participant[], events: Event[]): BalanceMap {
-  const balances: BalanceMap = {};
-  
-  participants.forEach(p => balances[p.id] = 0);
+export function calculateFinances(participants: Participant[], events: Event[]): Finances {
+  const balances: Record<string, number> = {};
+  const consumed: Record<string, number> = {};
+  const paid: Record<string, number> = {};
 
-  events.forEach(event => {
-    if (event.isReverted) return;
+  participants.forEach(p => {
+    balances[p.id] = 0;
+    consumed[p.id] = 0;
+    paid[p.id] = 0;
+  });
 
-    if (balances[event.payerId] !== undefined) {
-      balances[event.payerId] += event.amount;
-    }
+  events.forEach(ev => {
+    if (ev.isReverted) return;
+    const amount = ev.amount;
 
-    event.entries.forEach(entry => {
-      if (balances[entry.participantId] !== undefined) {
-        balances[entry.participantId] -= entry.amount;
-      }
+    // Плательщик внес деньги → его баланс уменьшается (ему должны)
+    paid[ev.payerId] = (paid[ev.payerId] || 0) + amount;
+    balances[ev.payerId] = (balances[ev.payerId] || 0) - amount;
+
+    // Участники потребляют доли → их баланс растет (они должны)
+    ev.entries.forEach(entry => {
+      consumed[entry.participantId] = (consumed[entry.participantId] || 0) + entry.amount;
+      balances[entry.participantId] = (balances[entry.participantId] || 0) + entry.amount;
     });
   });
 
-  return balances;
+  return { balances, consumed, paid };
 }
