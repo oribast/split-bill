@@ -21,9 +21,6 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
 
 export async function checkRateLimit(identifier: string) {
   if (!ratelimit) {
-    // В продакшене без Redis защиты нет. 
-    // Можно раскомментировать для эмуляции, но на Vercel это ненадежно.
-    // console.warn('Redis missing: Rate limit disabled');
     return { success: true }; 
   }
   const { success } = await ratelimit.limit(identifier);

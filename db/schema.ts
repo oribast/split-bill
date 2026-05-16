@@ -43,7 +43,7 @@ export const idempotencyKeys = pgTable('idempotency_keys', {
   expiresAt: timestamp('expires_at').notNull(),
 });
 
-// Relations для удобного чтения (findFirst с with)
+// Relations
 export const roomsRelations = relations(rooms, ({ many }) => ({
   participants: many(participants),
   events: many(events),
