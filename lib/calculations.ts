@@ -1,15 +1,26 @@
-// Типы данных, приходящих с бэкенда
-interface Participant { id: string; name: string; }
-interface EventEntry { participantId: string; amount: number; }
-interface Event { 
+export interface Participant { 
   id: string; 
-  amount: number; 
-  payerId: string; 
-  isReverted: boolean; 
-  entries: EventEntry[]; 
+  name: string; 
 }
 
-interface BalanceMap {
+export interface EventEntry { 
+  participantId: string; 
+  amount: number; 
+}
+
+export interface Event { 
+  id: string; 
+  description: string; 
+  amount: number; 
+  type: string; 
+  payerId: string;
+  payer?: { name: string }; 
+  isReverted: boolean;
+  entries: EventEntry[]; 
+  createdAt: string;
+}
+
+export interface BalanceMap {
   [participantId: string]: number;
 }
 
