@@ -54,12 +54,10 @@ export default function Home() {
     setLoading(true);
     setError('');
     try {
-      // Если похож на UUID → сразу переходим
       if (/^[0-9a-f-]{36}$/i.test(q)) {
         router.push(`/room/${q}`);
         return;
       }
-      // Иначе ищем по короткому коду
       const res = await fetch(`/api/v1/rooms/lookup?q=${encodeURIComponent(q)}`);
       if (!res.ok) throw new Error('not_found');
       const data = await res.json();
@@ -110,7 +108,7 @@ export default function Home() {
           <div style={{ marginBottom: '16px' }}>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '6px' }}>Прямая ссылка (с ключом админа)</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', background: 'var(--bg-secondary, #f3f4f6)', borderRadius: '8px', wordBreak: 'break-all' }}>
-              <IconLink className="w-4 h-4 flex-shrink-0 text-muted" />
+              <IconLink className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
               <span style={{ fontSize: '0.8rem', fontFamily: 'monospace', flex: 1 }}>{created.url}</span>
             </div>
           </div>
@@ -152,12 +150,20 @@ export default function Home() {
             value={roomName}
             onChange={(e) => setRoomName(e.target.value)}
             placeholder="Название комнаты (необязательно)"
-            style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)', marginBottom: '14px', outline: 'none' }}
+            style={{
+              width: '100%', padding: '10px 12px', borderRadius: '8px',
+              border: '1px solid var(--border, #cbd5e1)',
+              background: 'var(--bg-input, #ffffff)',
+              color: 'var(--text-primary, #111827)',
+              outline: 'none', marginBottom: '14px',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+              transition: 'border-color 0.2s, box-shadow 0.2s'
+            }}
           />
           
-          {/* 🔐 Блок защиты паролем (новый дизайн) */}
+          {/* 🔐 Блок защиты паролем */}
           <div style={{
-            border: `1px solid var(--border)`,
+            border: '1px solid var(--border, #cbd5e1)',
             borderRadius: '12px',
             padding: '14px',
             background: 'var(--bg-secondary, rgba(0,0,0,0.03))',
@@ -190,7 +196,9 @@ export default function Home() {
 
             {usePassword && (
               <div style={{ marginTop: '12px', position: 'relative' }}>
-                <IconLock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+                <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }}>
+                  <IconLock className="w-4 h-4" />
+                </span>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
@@ -198,8 +206,12 @@ export default function Home() {
                   placeholder="Придумайте пароль"
                   style={{
                     width: '100%', paddingLeft: '36px', paddingRight: '36px', paddingBlock: '10px',
-                    borderRadius: '8px', border: `1px solid var(--border)`, background: 'var(--bg-input)',
-                    color: 'var(--text-primary)', fontSize: '0.9rem', outline: 'none',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border, #cbd5e1)',
+                    background: 'var(--bg-input, #ffffff)',
+                    color: 'var(--text-primary, #111827)',
+                    fontSize: '0.9rem', outline: 'none',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
                     transition: 'border-color 0.2s, box-shadow 0.2s'
                   }}
                 />
@@ -243,7 +255,15 @@ export default function Home() {
             onChange={(e) => setJoinQuery(e.target.value)}
             placeholder="ID или код приглашения"
             onKeyDown={(e) => e.key === 'Enter' && joinRoom()}
-            style={{ flex: 1, padding: '10px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)', outline: 'none' }}
+            style={{
+              flex: 1, padding: '10px 12px', borderRadius: '8px',
+              border: '1px solid var(--border, #cbd5e1)',
+              background: 'var(--bg-input, #ffffff)',
+              color: 'var(--text-primary, #111827)',
+              outline: 'none',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
+              transition: 'border-color 0.2s, box-shadow 0.2s'
+            }}
           />
           <button className="btn-primary" onClick={joinRoom} disabled={loading}>Войти</button>
         </div>

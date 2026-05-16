@@ -131,7 +131,18 @@ export default function ParticipantsSidebar({
               onChange={e => setNewName(e.target.value)}
               onKeyDown={e => e.key === "Enter" && addParticipant()}
               placeholder="Имя участника"
-              className="flex-1 min-w-0 px-3 py-2 text-sm rounded border bg-background outline-none"
+              style={{
+                flex: 1,
+                minWidth: 0,
+                padding: '8px 12px',
+                fontSize: '0.875rem',
+                borderRadius: '8px',
+                border: '1px solid var(--border, #d1d5db)',
+                backgroundColor: 'var(--bg-input, #ffffff)',
+                color: 'var(--text-primary, #111827)',
+                outline: 'none',
+                transition: 'border-color 0.2s, box-shadow 0.2s'
+              }}
             />
             <button 
               onClick={addParticipant} 

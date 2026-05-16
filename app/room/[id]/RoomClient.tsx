@@ -14,6 +14,7 @@ import IndividualExpenseForm from "@/components/room/IndividualExpenseForm";
 import SharedExpenseForm from "@/components/room/SharedExpenseForm";
 import TotalsBlock from "@/components/room/TotalsBlock";
 import HistoryBlock from "@/components/room/HistoryBlock";
+import RoomAccessPanel from "@/components/room/RoomAccessPanel";
 
 const fetcher = async (url: string) => {
   const roomId = url.split("/").pop();
@@ -90,12 +91,25 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
 
   const getHeaders = () => {
     const h: HeadersInit = { "Content-Type": "application/json" };
-    const ek = typeof window !== "undefined" ? sessionStorage.getItem(`editKey_${roomId}`) : null;
-    const pw = typeof window !== "undefined" ? sessionStorage.getItem(`password_${roomId}`) : null;
+    const ek = typeof window !== "undefined" ? localStorage.getItem(`editKey_${roomId}`) : null;
+    const pw = typeof window !== "undefined" ? localStorage.getItem(`password_${roomId}`) : null;
     if (ek) h["x-edit-key"] = ek;
     if (pw) h["Authorization"] = `Basic ${pw}`;
     return h;
   };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const keyFromUrl = searchParams.get('editKey');
+    if (keyFromUrl) {
+      localStorage.setItem(`editKey_${roomId}`, keyFromUrl);
+      const url = new URL(window.location.href);
+      url.searchParams.delete('editKey');
+      window.history.replaceState({}, '', url.toString());
+      toast.success('Ключ администратора применён');
+      mutate();
+    }
+  }, [searchParams, roomId, mutate]);
 
   const handleFetchError = (res: Response) => {
     if (res.status === 401 || res.status === 403) {
@@ -114,18 +128,27 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
     try {
       const auth = `Basic ${btoa(`admin:${unlockPassword.trim()}`)}`;
       const res = await fetch(`/api/v1/rooms/${roomId}`, { headers: { Authorization: auth } });
-      if (res.ok) {
-        if (typeof window !== "undefined") sessionStorage.setItem(`password_${roomId}`, btoa(unlockPassword.trim()));
+      
+      if (res.status === 200) {
+        localStorage.setItem(`password_${roomId}`, btoa(unlockPassword.trim()));
         setIsUnlocked(true); setShowUnlockForm(false); setUnlockPassword(""); setShowUnlockPwd(false);
-        toast.success("Комната разблокирована"); mutate();
-      } else { setUnlockError("Неверный пароль"); toast.error("Неверный пароль"); }
-    } catch { setUnlockError("Ошибка сети"); toast.error("Ошибка сети"); }
-    finally { setSaving(false); }
+        toast.success("Комната разблокирована");
+        mutate();
+      } else if (res.status === 401 || res.status === 403) {
+        setUnlockError("Неверный пароль");
+        toast.error("Неверный пароль");
+      } else {
+        throw new Error("network");
+      }
+    } catch {
+      setUnlockError("Ошибка сети");
+      toast.error("Ошибка сети");
+    } finally { setSaving(false); }
   };
 
   const lockRoom = () => {
     if (window.confirm("Заблокировать редактирование?")) {
-      if (typeof window !== "undefined") sessionStorage.removeItem(`password_${roomId}`);
+      if (typeof window !== "undefined") localStorage.removeItem(`password_${roomId}`);
       setIsUnlocked(false); setShowUnlockForm(true); setUnlockPassword(""); setUnlockError("");
       toast("Редактирование заблокировано", { icon: "🔒" });
     }
@@ -257,6 +280,8 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
         setShowUnlockForm={setShowUnlockForm} 
         copyLink={copyLink} 
       />
+
+      {room?.inviteCode && <RoomAccessPanel roomId={roomId} inviteCode={room.inviteCode} />}
       
       {isProtected && !isUnlocked && showUnlockForm && (
         <UnlockForm 
