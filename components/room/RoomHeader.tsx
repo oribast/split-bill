@@ -28,8 +28,8 @@ export default function RoomHeader({
 }: RoomHeaderProps) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "14px", flexWrap: "wrap", gap: "10px" }}>
-      <h1 style={{ marginBottom: 0, fontSize: "1.75rem", fontWeight: 700 }}>
-        {roomName}
+      <h1 style={{ marginBottom: 0, fontSize: "1.75rem", fontWeight: 700, letterSpacing: "-0.01em" }}>
+        Tally <span style={{ fontWeight: 400, opacity: 0.6, fontSize: "0.9em" }}>| {roomName}</span>
       </h1>
       
       <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>

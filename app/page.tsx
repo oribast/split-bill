@@ -2,9 +2,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { IconLock, IconEye, IconEyeOff, IconPlus, IconLink, IconUsers } from '@/components/Icons';
+import { IconLock, IconEye, IconEyeOff, IconPlus, IconLink, IconUsers, IconSun, IconMoon } from '@/components/Icons';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function Home() {
+  const router = useRouter();
+  const { theme, toggleTheme, mounted } = useTheme();
+
   const [roomName, setRoomName] = useState('');
   const [joinQuery, setJoinQuery] = useState('');
   const [loading, setLoading] = useState(false);
@@ -13,7 +17,6 @@ export default function Home() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [created, setCreated] = useState<{ id: string; url: string; code: string } | null>(null);
-  const router = useRouter();
 
   const createRoom = async () => {
     const name = roomName.trim() || 'Новая комната';
@@ -51,12 +54,10 @@ export default function Home() {
     setLoading(true);
     setError('');
     try {
-      // Если похоже на UUID → сразу переходим
       if (/^[0-9a-f-]{36}$/i.test(q)) {
         router.push(`/room/${q}`);
         return;
       }
-      // Иначе ищем по короткому коду
       const res = await fetch(`/api/v1/rooms/lookup?q=${encodeURIComponent(q)}`);
       if (!res.ok) throw new Error('not_found');
       const data = await res.json();
@@ -78,8 +79,18 @@ export default function Home() {
 
   if (created) {
     return (
-      <div className="container" style={{ textAlign: 'center', paddingTop: '80px' }}>
-        <h1 style={{ fontSize: '2rem', marginBottom: '16px' }}>Комната создана!</h1>
+      <div className="container relative" style={{ textAlign: 'center', paddingTop: '80px' }}>
+        {mounted && (
+          <button 
+            onClick={toggleTheme} 
+            className="absolute top-4 right-4 p-2 rounded-lg border border-border bg-background hover:bg-secondary transition"
+            title={theme === 'light' ? 'Тёмная тема' : 'Светлая тема'}
+          >
+            {theme === 'light' ? <IconMoon className="w-5 h-5" /> : <IconSun className="w-5 h-5" />}
+          </button>
+        )}
+
+        <h1 style={{ fontSize: '2rem', marginBottom: '16px', fontWeight: 700 }}>Комната создана!</h1>
         <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>
           Отправьте ссылку или код приглашения участникам.
         </p>
@@ -114,10 +125,20 @@ export default function Home() {
   }
 
   return (
-    <div className="container" style={{ textAlign: 'center', paddingTop: '80px' }}>
-      <h1 style={{ fontSize: '2.5rem', marginBottom: '16px' }}>Split Bill</h1>
+    <div className="container relative" style={{ textAlign: 'center', paddingTop: '80px' }}>
+      {mounted && (
+        <button 
+          onClick={toggleTheme} 
+          className="absolute top-4 right-4 p-2 rounded-lg border border-border bg-background hover:bg-secondary transition"
+          title={theme === 'light' ? 'Тёмная тема' : 'Светлая тема'}
+        >
+          {theme === 'light' ? <IconMoon className="w-5 h-5" /> : <IconSun className="w-5 h-5" />}
+        </button>
+      )}
+
+      <h1 style={{ fontSize: '2.75rem', marginBottom: '8px', fontWeight: 800, letterSpacing: '-0.02em' }}>Tally</h1>
       <p style={{ color: 'var(--text-secondary)', marginBottom: '48px', fontSize: '1.125rem' }}>
-        Создай комнату для разделения счёта и поделись кодом или ссылкой
+        Умный раздел расходов без лишних сложностей
       </p>
 
       <div className="card" style={{ maxWidth: '400px', margin: '0 auto 24px', padding: '20px' }}>
@@ -127,13 +148,18 @@ export default function Home() {
             value={roomName}
             onChange={(e) => setRoomName(e.target.value)}
             placeholder="Название комнаты (необязательно)"
-            style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-input)', marginBottom: '12px' }}
+            style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-input)', marginBottom: '12px', color: 'var(--text-primary)' }}
           />
           <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', justifyContent: 'center', color: 'var(--text-secondary)' }}>
-            <input type="checkbox" checked={usePassword} onChange={(e) => {
-              setUsePassword(e.target.checked);
-              if (!e.target.checked) { setPassword(''); setShowPassword(false); }
-            }} />
+            <input 
+              type="checkbox" 
+              checked={usePassword} 
+              onChange={(e) => {
+                setUsePassword(e.target.checked);
+                if (!e.target.checked) { setPassword(''); setShowPassword(false); }
+              }}
+              style={{ accentColor: 'var(--accent-primary, #3b82f6)', width: '16px', height: '16px', cursor: 'pointer' }}
+            />
             <IconLock className="w-4 h-4" /> Защитить паролем
           </label>
           {usePassword && (
@@ -144,7 +170,7 @@ export default function Home() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Придумайте пароль"
-                style={{ width: '100%', paddingLeft: '36px', paddingRight: '36px', paddingBlock: '10px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-input)' }}
+                style={{ width: '100%', paddingLeft: '36px', paddingRight: '36px', paddingBlock: '10px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)' }}
               />
               <button
                 type="button"
@@ -174,7 +200,7 @@ export default function Home() {
             onChange={(e) => setJoinQuery(e.target.value)}
             placeholder="ID или код приглашения"
             onKeyDown={(e) => e.key === 'Enter' && joinRoom()}
-            style={{ flex: 1, padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-input)' }}
+            style={{ flex: 1, padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)' }}
           />
           <button className="btn-primary" onClick={joinRoom} disabled={loading}>Войти</button>
         </div>
