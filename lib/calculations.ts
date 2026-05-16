@@ -27,30 +27,22 @@ export interface BalanceMap {
 export function calculateBalances(participants: Participant[], events: Event[]): BalanceMap {
   const balances: BalanceMap = {};
   
-  // Инициализация нулями
   participants.forEach(p => balances[p.id] = 0);
 
   events.forEach(event => {
     if (event.isReverted) return;
 
-    // Платец "дал" деньги системе (плюс ему)
-    // Сумма траты
-    const totalAmount = event.amount;
-    
-    // Платец заплатил полную сумму, значит он "в плюсе" на эту сумму относительно своих долей
-    // Но проще считать так:
-    // 1. Платец внес +Amount в общий котел.
-    // 2. Каждый участник (включая плательщика) забрал из котла свою долю (entries).
-    
-    // Добавляем платеж плательщику
     if (balances[event.payerId] !== undefined) {
-      balances[event.payerId] += totalAmount;
+      balances[event.payerId] += event.amount;
+    } else {
+      balances[event.payerId] = (balances[event.payerId] || 0) + event.amount;
     }
 
-    // Вычитаем доли участников
     event.entries.forEach(entry => {
       if (balances[entry.participantId] !== undefined) {
         balances[entry.participantId] -= entry.amount;
+      } else {
+        balances[entry.participantId] = (balances[entry.participantId] || 0) - entry.amount;
       }
     });
   });
