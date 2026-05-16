@@ -1,26 +1,5 @@
-export interface Participant { 
-  id: string; 
-  name: string; 
-}
-
-export interface EventEntry { 
-  participantId: string; 
-  amount: number; 
-}
-
-export interface Event { 
-  id: string; 
-  description: string; 
-  amount: number; 
-  type: 'shared' | 'individual'; 
-  payerId: string;
-  payer?: { id: string; name: string } | null; 
-  targetParticipant?: { id: string; name: string } | null;
-  isReverted: boolean;
-  entries: EventEntry[]; 
-  createdAt: Date | string; // <-- Исправлено: принимаем и Date, и string
-  revertedAt?: Date | string | null;
-}
+// lib/calculations.ts
+import { Participant, Event } from './types'; // ✅ Импорт из единого файла
 
 export interface BalanceMap {
   [participantId: string]: number;
@@ -29,22 +8,21 @@ export interface BalanceMap {
 export function calculateBalances(participants: Participant[], events: Event[]): BalanceMap {
   const balances: BalanceMap = {};
   
+  // Инициализация нулями
   participants.forEach(p => balances[p.id] = 0);
 
   events.forEach(event => {
     if (event.isReverted) return;
 
+    // Платец внёс всю сумму в "котёл"
     if (balances[event.payerId] !== undefined) {
       balances[event.payerId] += event.amount;
-    } else {
-      balances[event.payerId] = (balances[event.payerId] || 0) + event.amount;
     }
 
+    // Участники забрали свои доли
     event.entries.forEach(entry => {
       if (balances[entry.participantId] !== undefined) {
         balances[entry.participantId] -= entry.amount;
-      } else {
-        balances[entry.participantId] = (balances[entry.participantId] || 0) - entry.amount;
       }
     });
   });
