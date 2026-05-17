@@ -24,12 +24,9 @@ export default function RoomHeader({
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Закрытие меню при клике вне
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setShowMenu(false);
-      }
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setShowMenu(false);
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -75,14 +72,13 @@ export default function RoomHeader({
           )
         )}
 
-        {/* 🔽 Кнопка "Ссылка" теперь открывает выпадающий список */}
         <div style={{ position: "relative" }} ref={menuRef}>
           <button 
             className="btn-secondary btn-small" 
             onClick={() => setShowMenu(!showMenu)} 
             style={{ display: "flex", alignItems: "center", gap: "5px" }}
           >
-            <IconLink className="w-4 h-4" /> Ссылка <span style={{ fontSize: "0.7rem", marginLeft: "2px" }}>▼</span>
+            <IconLink className="w-4 h-4" /> Доступ <span style={{ fontSize: "0.7rem", marginLeft: "2px" }}>▼</span>
           </button>
 
           {showMenu && (
@@ -110,7 +106,9 @@ export default function RoomHeader({
                   <IconKey className="w-4 h-4" style={{ color: "var(--text-muted)" }} /> Код приглашения
                 </button>
               )}
-              {isAdmin && adminLink && (
+              
+              {/* ✅ Ссылка администратора показывается ТОЛЬКО если комната защищена паролем */}
+              {isProtected && isAdmin && adminLink && (
                 <>
                   <div style={{ height: "1px", background: "var(--border)", margin: "4px 0" }} />
                   <button onClick={() => copy(adminLink!, "Ссылка администратора")} style={{
