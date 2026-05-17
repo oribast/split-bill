@@ -21,7 +21,7 @@ interface Props {
 }
 
 export default function HistoryBlock({ events, deposits = [], participants, isUnlocked, handleRollback }: Props) {
-  // ✅ Объединяем события и депозиты в единую ленту, сортируем по дате (новые сверху)
+  // ✅ Объединяем события и депозиты, сортируем по дате
   const history = [
     ...events.map(e => ({ type: 'event' as const, data: e, createdAt: e.createdAt })),
     ...deposits.map(d => ({ type: 'deposit' as const, data: d, createdAt: d.createdAt }))
@@ -39,19 +39,19 @@ export default function HistoryBlock({ events, deposits = [], participants, isUn
         <div className="empty-state" style={{ padding: "24px 16px" }}>
           <IconHistory className="w-8 h-8 mx-auto mb-2 text-muted" />
           <div className="empty-title" style={{ fontSize: "1rem" }}>Пока нет операций</div>
-          <div className="empty-subtitle" style={{ fontSize: "0.85rem" }}>Начислите, распределите сумму или внесите взнос — записи появятся здесь</div>
+          <div className="empty-subtitle" style={{ fontSize: "0.85rem" }}>Начислите или распределите сумму — записи появятся здесь</div>
         </div>
       ) : (
         <div className="logs-modern" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
           {history.map(item => {
-            // 🟡 Рендер депозита (стили и структура полностью совпадают с событиями)
+            // 🟡 Рендер депозита (в том же стиле что и события)
             if (item.type === 'deposit') {
               const d = item.data as Deposit;
               const dateStr = formatDate(d.createdAt);
               const pName = getName(d.participantId);
               
               return (
-                <div key={d.id} className="log-card" style={{ padding: "12px", borderLeft: "4px solid var(--accent-primary)" }}>
+                <div key={d.id} className="log-card" style={{ padding: "12px" }}>
                   <div className="log-card-header" style={{ marginBottom: "8px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div className="log-card-meta" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                       <span className="log-badge" style={{ fontSize: "0.65rem", padding: "2px 8px", background: "rgba(66,153,225,0.12)", color: "var(--accent-primary)" }}>
@@ -77,7 +77,7 @@ export default function HistoryBlock({ events, deposits = [], participants, isUn
               );
             }
 
-            // 🔵 Рендер события (твой исходный код без изменений)
+            // 🔵 Рендер события (ТВОЙ ОРИГИНАЛЬНЫЙ КОД БЕЗ ИЗМЕНЕНИЙ)
             const log = item.data as EventWithRelations;
             const dateStr = formatDate(log.createdAt);
             const { main, comment } = parseDescription(log.description || "");
