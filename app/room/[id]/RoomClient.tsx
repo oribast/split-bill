@@ -369,7 +369,13 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
             </>
           )}
           
-          <HistoryBlock events={room?.events || []} participants={room?.participants || []} isUnlocked={isUnlocked} handleRollback={handleRollback} />
+          <HistoryBlock 
+            events={room?.events || []} 
+            deposits={room?.deposits || []} // ✅ Добавлено
+            participants={room?.participants || []} 
+            isUnlocked={isUnlocked} 
+            handleRollback={handleRollback} 
+          />
         </main>
       </div>
     </div>

@@ -58,3 +58,10 @@ export const IconKey: React.FC<IconProps> = ({ className = "w-5 h-5" }) => (
     <path d="M12.22 12.22 21 3.5 17.5 0 8.72 8.72a5.5 5.5 0 1 0 7.78 7.78l-4.22-4.28z"/>
   </svg>
 );
+export const IconBanknote: React.FC<IconProps> = ({ className = "w-5 h-5" }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="6" width="20" height="12" rx="2" />
+    <circle cx="12" cy="12" r="3" />
+    <path d="M6 12h.01M18 12h.01" />
+  </svg>
+);

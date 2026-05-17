@@ -14,7 +14,9 @@ export default function SettlementsCard({ participants, balances }: Props) {
   const settlements = useMemo(() => {
     const balanceMap: Record<string, number> = {};
     for (const [id, sheet] of Object.entries(balances)) {
-      balanceMap[id] = sheet.balance;
+      // ✅ Переводы рассчитываются ТОЛЬКО по разнице расходов.
+      // Депозиты (paidIn) не создают обязательств перед другими участниками.
+      balanceMap[id] = sheet.spent - sheet.consumed;
     }
     return calculateSettlements(balanceMap);
   }, [balances]);
