@@ -275,6 +275,8 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
       <RoomHeader 
         roomId={roomId} 
         roomName={room?.name || `Комната ${roomId.slice(0, 6)}`}
+        inviteCode={room?.inviteCode}
+        isAdmin={isUnlocked}
         saving={saving} 
         theme={theme} 
         toggleTheme={toggleTheme} 
@@ -283,11 +285,6 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
         lockRoom={lockRoom} 
         setShowUnlockForm={setShowUnlockForm} 
       />
-      
-      {/* ✅ Панель доступа (реактивная, с поддержкой темы и пароля) */}
-      {room?.inviteCode && (
-        <RoomAccessPanel roomId={roomId} inviteCode={room.inviteCode} isAdmin={isUnlocked} />
-      )}
 
       {isProtected && !isUnlocked && showUnlockForm && (
         <UnlockForm 
