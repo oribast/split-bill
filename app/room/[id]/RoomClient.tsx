@@ -8,7 +8,6 @@ import { RoomWithRelations } from "@/lib/types";
 import { useTheme } from '@/hooks/use-theme';
 
 import RoomHeader from "@/components/room/RoomHeader";
-import RoomAccessPanel from "@/components/room/RoomAccessPanel";
 import UnlockForm from "@/components/room/UnlockForm";
 import ParticipantsSidebar from "@/components/room/ParticipantsSidebar";
 import IndividualExpenseForm from "@/components/room/IndividualExpenseForm";
@@ -283,7 +282,6 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
         isUnlocked={isUnlocked} 
         lockRoom={lockRoom} 
         setShowUnlockForm={setShowUnlockForm} 
-        copyLink={copyLink} 
       />
       
       {/* ✅ Панель доступа (реактивная, с поддержкой темы и пароля) */}
