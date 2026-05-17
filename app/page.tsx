@@ -36,6 +36,10 @@ export default function Home() {
       const data = await res.json();
       
       if (data.room?.id && data.editKey && data.inviteCode) {
+        // ✅ Мгновенно сохраняем ключ админа в localStorage
+        if (typeof window !== "undefined") {
+          localStorage.setItem(`editKey_${data.room.id}`, data.editKey);
+        }
         const url = `${window.location.origin}/room/${data.room.id}?editKey=${data.editKey}`;
         setCreated({ id: data.room.id, url, code: data.inviteCode });
       } else {
@@ -77,6 +81,7 @@ export default function Home() {
     if (created) navigator.clipboard.writeText(created.code).then(() => toast.success('Код скопирован'));
   };
 
+  // ✅ Экран успешного создания
   if (created) {
     return (
       <div className="container relative" style={{ textAlign: 'center', paddingTop: '80px' }}>
@@ -125,6 +130,7 @@ export default function Home() {
     );
   }
 
+  // ✅ Главная форма
   return (
     <div className="container relative" style={{ textAlign: 'center', paddingTop: '80px' }}>
       {mounted && (
