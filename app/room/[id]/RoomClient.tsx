@@ -17,6 +17,7 @@ import TotalsBlock from "@/components/room/TotalsBlock";
 import HistoryBlock from "@/components/room/HistoryBlock";
 import BalancesTable from "@/components/room/BalancesTable";
 import SettlementsCard from "@/components/room/SettlementsCard";
+import DepositForm from "@/components/room/DepositForm";
 
 const fetcher = async (url: string) => {
   const roomId = url.split("/").pop();
@@ -357,8 +358,14 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
           
           {room && room.participants.length > 0 && (
             <>
+              <DepositForm 
+                roomId={roomId} 
+                participants={room.participants} 
+                isUnlocked={isUnlocked} 
+                onMutate={mutate} 
+              />
               <BalancesTable participants={room.participants} balances={balances} />
-              <SettlementsCard roomId={roomId} participants={room.participants} />
+              <SettlementsCard participants={room.participants} balances={balances} />
             </>
           )}
           

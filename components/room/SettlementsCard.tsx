@@ -1,26 +1,23 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useMemo } from "react";
 import toast from "react-hot-toast";
 import { IconLink } from "@/components/Icons";
-
-interface Settlement { fromId: string; toId: string; amount: number; }
+import { calculateSettlements } from "@/lib/debt";
+import { BalanceSheet } from "@/lib/balances";
 
 interface Props {
-  roomId: string;
   participants: { id: string; name: string }[];
+  balances: Record<string, BalanceSheet>;
 }
 
-export default function SettlementsCard({ roomId, participants }: Props) {
-  const [settlements, setSettlements] = useState<Settlement[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch(`/api/v1/rooms/${roomId}/settlements`)
-      .then(res => res.ok ? res.json() : Promise.reject())
-      .then(data => setSettlements(data.settlements))
-      .catch(() => toast.error('Ошибка загрузки переводов'))
-      .finally(() => setLoading(false));
-  }, [roomId]);
+export default function SettlementsCard({ participants, balances }: Props) {
+  const settlements = useMemo(() => {
+    const balanceMap: Record<string, number> = {};
+    for (const [id, sheet] of Object.entries(balances)) {
+      balanceMap[id] = sheet.balance;
+    }
+    return calculateSettlements(balanceMap);
+  }, [balances]);
 
   const getName = (id: string) => participants.find(p => p.id === id)?.name || 'Удалённый';
   const fmt = (c: number) => (c / 100).toFixed(2) + ' ₽';
@@ -38,9 +35,7 @@ export default function SettlementsCard({ roomId, participants }: Props) {
           <IconLink className="w-4 h-4" /> Скопировать
         </button>
       </div>
-      {loading ? (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Расчёт...</p>
-      ) : settlements.length === 0 ? (
+      {settlements.length === 0 ? (
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Все расчёты завершены. Переводов не требуется.</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
