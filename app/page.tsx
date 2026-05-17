@@ -77,14 +77,14 @@ export default function Home() {
     if (created) navigator.clipboard.writeText(created.code).then(() => toast.success('Код скопирован'));
   };
 
-  // ✅ Экран успешного создания
   if (created) {
     return (
       <div className="container relative" style={{ textAlign: 'center', paddingTop: '80px' }}>
         {mounted && (
           <button 
             onClick={toggleTheme} 
-            className="absolute top-4 right-4 p-2 rounded-lg border border-border bg-background hover:bg-secondary transition"
+            className="absolute top-4 right-4 p-2 rounded-lg border bg-card hover:bg-secondary transition"
+            style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }}
             title={theme === 'light' ? 'Тёмная тема' : 'Светлая тема'}
           >
             {theme === 'light' ? <IconMoon className="w-5 h-5" /> : <IconSun className="w-5 h-5" />}
@@ -98,8 +98,8 @@ export default function Home() {
         <div className="card" style={{ maxWidth: '480px', margin: '0 auto 24px', padding: '20px' }}>
           <div style={{ marginBottom: '16px' }}>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '6px' }}>Код приглашения</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', background: 'var(--bg-secondary, #f3f4f6)', borderRadius: '8px' }}>
-              <span style={{ fontSize: '1.5rem', fontFamily: 'monospace', fontWeight: 700, letterSpacing: '2px', flex: 1 }}>{created.code}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+              <span style={{ fontSize: '1.5rem', fontFamily: 'monospace', fontWeight: 700, letterSpacing: '2px', flex: 1, color: 'var(--text-primary)' }}>{created.code}</span>
               <button onClick={copyCode} className="btn-secondary btn-small flex items-center gap-1">
                 <IconLink className="w-4 h-4" /> Копировать
               </button>
@@ -107,9 +107,9 @@ export default function Home() {
           </div>
           <div style={{ marginBottom: '16px' }}>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '6px' }}>Прямая ссылка (с ключом админа)</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', background: 'var(--bg-secondary, #f3f4f6)', borderRadius: '8px', wordBreak: 'break-all' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', background: 'var(--bg-secondary)', borderRadius: '8px', wordBreak: 'break-all' }}>
               <IconLink className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
-              <span style={{ fontSize: '0.8rem', fontFamily: 'monospace', flex: 1 }}>{created.url}</span>
+              <span style={{ fontSize: '0.8rem', fontFamily: 'monospace', flex: 1, color: 'var(--text-primary)' }}>{created.url}</span>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
@@ -125,13 +125,13 @@ export default function Home() {
     );
   }
 
-  // ✅ Главная форма
   return (
     <div className="container relative" style={{ textAlign: 'center', paddingTop: '80px' }}>
       {mounted && (
         <button 
           onClick={toggleTheme} 
-          className="absolute top-4 right-4 p-2 rounded-lg border border-border bg-background hover:bg-secondary transition"
+          className="absolute top-4 right-4 p-2 rounded-lg border bg-card hover:bg-secondary transition"
+          style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }}
           title={theme === 'light' ? 'Тёмная тема' : 'Светлая тема'}
         >
           {theme === 'light' ? <IconMoon className="w-5 h-5" /> : <IconSun className="w-5 h-5" />}
@@ -152,21 +152,20 @@ export default function Home() {
             placeholder="Название комнаты (необязательно)"
             style={{
               width: '100%', padding: '10px 12px', borderRadius: '8px',
-              border: '1px solid var(--border, #cbd5e1)',
-              background: 'var(--bg-input, #ffffff)',
-              color: 'var(--text-primary, #111827)',
+              border: '1px solid var(--border)',
+              background: 'var(--bg-input)',
+              color: 'var(--text-primary)',
               outline: 'none', marginBottom: '14px',
               boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
               transition: 'border-color 0.2s, box-shadow 0.2s'
             }}
           />
           
-          {/* 🔐 Блок защиты паролем */}
           <div style={{
-            border: '1px solid var(--border, #cbd5e1)',
+            border: '1px solid var(--border)',
             borderRadius: '12px',
             padding: '14px',
-            background: 'var(--bg-secondary, rgba(0,0,0,0.03))',
+            background: 'var(--bg-secondary)',
             transition: 'all 0.2s ease'
           }}>
             <div 
@@ -180,10 +179,9 @@ export default function Home() {
                 <IconLock className="w-4 h-4" /> Защитить паролем
               </span>
               
-              {/* Toggle Switch */}
               <div style={{
                 position: 'relative', width: '40px', height: '22px', borderRadius: '11px',
-                background: usePassword ? 'var(--accent-primary, #3b82f6)' : 'var(--border, #cbd5e1)',
+                background: usePassword ? 'var(--accent-primary)' : 'var(--border)',
                 transition: 'background 0.2s', flexShrink: 0
               }}>
                 <div style={{
@@ -207,9 +205,9 @@ export default function Home() {
                   style={{
                     width: '100%', paddingLeft: '36px', paddingRight: '36px', paddingBlock: '10px',
                     borderRadius: '8px',
-                    border: '1px solid var(--border, #cbd5e1)',
-                    background: 'var(--bg-input, #ffffff)',
-                    color: 'var(--text-primary, #111827)',
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg-input)',
+                    color: 'var(--text-primary)',
                     fontSize: '0.9rem', outline: 'none',
                     boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
                     transition: 'border-color 0.2s, box-shadow 0.2s'
@@ -257,9 +255,9 @@ export default function Home() {
             onKeyDown={(e) => e.key === 'Enter' && joinRoom()}
             style={{
               flex: 1, padding: '10px 12px', borderRadius: '8px',
-              border: '1px solid var(--border, #cbd5e1)',
-              background: 'var(--bg-input, #ffffff)',
-              color: 'var(--text-primary, #111827)',
+              border: '1px solid var(--border)',
+              background: 'var(--bg-input)',
+              color: 'var(--text-primary)',
               outline: 'none',
               boxShadow: '0 1px 2px rgba(0,0,0,0.04)',
               transition: 'border-color 0.2s, box-shadow 0.2s'
