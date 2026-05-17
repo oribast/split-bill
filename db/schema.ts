@@ -1,8 +1,6 @@
 import { pgTable, uuid, varchar, bigint, timestamp, boolean, jsonb } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm'
 
-// Вспомогательная функция для UUID с автогенерацией
-// Важно: uuid() требует имя колонки!
 const uuidPk = (name: string) => uuid(name).primaryKey().defaultRandom();
 
 export const rooms = pgTable('rooms', {

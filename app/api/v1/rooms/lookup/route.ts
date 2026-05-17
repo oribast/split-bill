@@ -4,15 +4,29 @@ import { rooms } from '@/db/schema';
 import { eq, or } from 'drizzle-orm';
 
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const query = searchParams.get('q')?.trim().toUpperCase();
-  if (!query) return NextResponse.json({ error: 'Missing query' }, { status: 400 });
+  try {
+    const { searchParams } = new URL(req.url);
+    const rawQuery = searchParams.get('q');
+    if (!rawQuery) return NextResponse.json({ error: 'Missing query' }, { status: 400 });
 
-  const room = await db.query.rooms.findFirst({
-    where: or(eq(rooms.id, query), eq(rooms.inviteCode, query)),
-    columns: { id: true }
-  });
+    const query = rawQuery.trim().toUpperCase();
 
-  if (!room) return NextResponse.json({ error: 'not_found' }, { status: 404 });
-  return NextResponse.json({ roomId: room.id });
+    const room = await db.query.rooms.findFirst({
+      where: or(
+        eq(rooms.id, query),
+        eq(rooms.inviteCode, query)
+      ),
+      columns: { id: true }
+    });
+
+    if (!room) {
+      console.log(`[Lookup] Not found for query: ${query}`);
+      return NextResponse.json({ error: 'not_found' }, { status: 404 });
+    }
+
+    return NextResponse.json({ roomId: room.id });
+  } catch (error) {
+    console.error('[Lookup] DB Error:', error);
+    return NextResponse.json({ error: 'server_error' }, { status: 500 });
+  }
 }
