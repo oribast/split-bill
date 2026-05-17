@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import useSWR from "swr";
 import toast from "react-hot-toast";
 import { calculateFinances, Finances } from "@/lib/calculations";
+import { calculateBalances, BalanceSheet } from "@/lib/balances";
 import { RoomWithRelations } from "@/lib/types";
 import { useTheme } from '@/hooks/use-theme';
 
@@ -14,6 +15,8 @@ import IndividualExpenseForm from "@/components/room/IndividualExpenseForm";
 import SharedExpenseForm from "@/components/room/SharedExpenseForm";
 import TotalsBlock from "@/components/room/TotalsBlock";
 import HistoryBlock from "@/components/room/HistoryBlock";
+import BalancesTable from "@/components/room/BalancesTable";
+import SettlementsCard from "@/components/room/SettlementsCard";
 
 const fetcher = async (url: string) => {
   const roomId = url.split("/").pop();
@@ -59,6 +62,8 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
   const [sharedPayerId, setSharedPayerId] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
+  const [balances, setBalances] = useState<Record<string, BalanceSheet>>({});
+
   // ✅ 1. Применение ключей/паролей из URL
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -103,6 +108,12 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
       setShowUnlockForm(false);
     }
   }, [room, roomId]);
+
+  // ✅ 3. Расчёт балансов при обновлении данных комнаты
+  useEffect(() => {
+    if (!room) return;
+    setBalances(calculateBalances(room.participants, room.events, room.deposits || []));
+  }, [room]);
 
   const getHeaders = () => {
     const h: HeadersInit = { "Content-Type": "application/json" };
@@ -343,6 +354,14 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
             </>
           )}
           {room && room.participants.length > 0 && <TotalsBlock participants={room.participants} finances={finances} />}
+          
+          {room && room.participants.length > 0 && (
+            <>
+              <BalancesTable participants={room.participants} balances={balances} />
+              <SettlementsCard roomId={roomId} participants={room.participants} />
+            </>
+          )}
+          
           <HistoryBlock events={room?.events || []} participants={room?.participants || []} isUnlocked={isUnlocked} handleRollback={handleRollback} />
         </main>
       </div>

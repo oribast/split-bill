@@ -44,4 +44,12 @@ export interface Room {
 export interface RoomWithRelations extends Room {
   participants: Participant[];
   events: EventWithRelations[];
+  deposits: { 
+    id: string; 
+    participantId: string; 
+    amount: number; 
+    isAdvance: boolean; 
+    note: string | null; 
+    createdAt: Date 
+  }[];
 }

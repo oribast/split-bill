@@ -1,5 +1,5 @@
-import { pgTable, uuid, varchar, bigint, timestamp, boolean, jsonb } from 'drizzle-orm/pg-core';
-import { relations } from 'drizzle-orm'
+import { pgTable, uuid, varchar, timestamp, boolean, integer, text, jsonb, bigint } from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
 
 const uuidPk = (name: string) => uuid(name).primaryKey().defaultRandom();
 
@@ -46,14 +46,34 @@ export const idempotencyKeys = pgTable('idempotency_keys', {
   expiresAt: timestamp('expires_at').notNull(),
 });
 
-// Relations
+export const auditLogs = pgTable('audit_logs', {
+  id: uuidPk('id'),
+  action: varchar('action', { length: 50 }).notNull(),
+  roomId: uuid('room_id'),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const deposits = pgTable('deposits', {
+  id: uuidPk('id'),
+  roomId: uuid('room_id').notNull().references(() => rooms.id, { onDelete: 'cascade' }),
+  participantId: uuid('participant_id').notNull().references(() => participants.id, { onDelete: 'cascade' }),
+  amount: integer('amount').notNull(),
+  isAdvance: boolean('is_advance').default(false).notNull(),
+  note: text('note'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+// ───────── Relations ─────────
 export const roomsRelations = relations(rooms, ({ many }) => ({
   participants: many(participants),
   events: many(events),
+  deposits: many(deposits), // ✅ Добавлено для поддержки with: { deposits: true }
 }));
 
-export const participantsRelations = relations(participants, ({ one }) => ({
+export const participantsRelations = relations(participants, ({ one, many }) => ({
   room: one(rooms, { fields: [participants.roomId], references: [rooms.id] }),
+  deposits: many(deposits), // ✅ Обратная связь
 }));
 
 export const eventsRelations = relations(events, ({ one, many }) => ({
@@ -68,10 +88,7 @@ export const eventEntriesRelations = relations(eventEntries, ({ one }) => ({
   participant: one(participants, { fields: [eventEntries.participantId], references: [participants.id] }),
 }));
 
-export const auditLogs = pgTable('audit_logs', {
-  id: uuidPk('id'),
-  action: varchar('action', { length: 50 }).notNull(),
-  roomId: uuid('room_id'),
-  metadata: jsonb('metadata'),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
+export const depositsRelations = relations(deposits, ({ one }) => ({
+  room: one(rooms, { fields: [deposits.roomId], references: [rooms.id] }),
+  participant: one(participants, { fields: [deposits.participantId], references: [participants.id] }),
+}));

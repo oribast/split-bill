@@ -11,6 +11,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     where: eq(rooms.id, id),
     with: {
       participants: true,
+      deposits: true,
       events: {
         with: {
           entries: true,
