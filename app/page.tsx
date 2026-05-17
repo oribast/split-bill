@@ -1,11 +1,12 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { IconLock, IconEye, IconEyeOff, IconPlus, IconLink, IconUsers, IconSun, IconMoon } from '@/components/Icons';
 import { useTheme } from '@/hooks/use-theme';
 
-export default function Home() {
+// ✅ Внутренний компонент, использующий useSearchParams
+function HomeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { theme, toggleTheme, mounted } = useTheme();
@@ -19,7 +20,7 @@ export default function Home() {
   const [error, setError] = useState('');
   const [created, setCreated] = useState<{ id: string; url: string; code: string } | null>(null);
 
-  // ✅ Обработка ?code= при загрузке главной страницы
+  // ✅ Обработка ?code= при загрузке
   useEffect(() => {
     if (typeof window === "undefined") return;
     const code = searchParams.get('code');
@@ -152,5 +153,14 @@ export default function Home() {
         </div>
       </div>
     </div>
+  );
+}
+
+// ✅ Обёртка с Suspense (требование Next.js для useSearchParams)
+export default function Home() {
+  return (
+    <Suspense fallback={null}>
+      <HomeContent />
+    </Suspense>
   );
 }
