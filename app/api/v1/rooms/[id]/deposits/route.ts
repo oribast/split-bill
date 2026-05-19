@@ -7,7 +7,7 @@ import { revalidateTag } from 'next/cache';
 
 const schema = z.object({
   participantId: z.string().uuid(),
-  receiverId: z.string().uuid().nullable().optional(), // ✅ Добавлено
+  receiverId: z.string().uuid(), // ✅ Обязательно, без nullable
   amount: z.number().int().positive(),
   isAdvance: z.boolean().optional().default(false),
   note: z.string().max(255).optional(),
