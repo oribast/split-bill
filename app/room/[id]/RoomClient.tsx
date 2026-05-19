@@ -64,6 +64,12 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const [balances, setBalances] = useState<Record<string, BalanceSheet>>({});
+  const [roomStatus, setRoomStatus] = useState<"open" | "closed">("open");
+
+  // ✅ Синхронизация статуса комнаты из данных
+  useEffect(() => {
+    if (room?.status) setRoomStatus(room.status as "open" | "closed");
+  }, [room]);
 
   // ✅ 1. Применение ключей/паролей из URL
   useEffect(() => {
@@ -169,6 +175,41 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
       toast("Редактирование заблокировано", { icon: "🔒" });
       mutate();
     }
+  };
+
+  // ✅ Управление статусом комнаты (закрытие/открытие)
+  const handleToggleStatus = async () => {
+    const nextStatus = roomStatus === "open" ? "closed" : "open";
+    if (!window.confirm(nextStatus === "closed" ? "Закрыть комнату? Новые операции будут недоступны." : "Открыть комнату для новых операций?")) return;
+    
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/v1/rooms/${roomId}/status`, {
+        method: "PATCH",
+        headers: getHeaders(),
+        body: JSON.stringify({ status: nextStatus })
+      });
+      if (!res.ok) throw new Error();
+      setRoomStatus(nextStatus);
+      toast.success(nextStatus === "closed" ? "Комната закрыта" : "Комната открыта");
+      mutate();
+    } catch { toast.error("Ошибка изменения статуса"); } 
+    finally { setSaving(false); }
+  };
+
+  // ✅ Очистка истории и взносов
+  const handleClearData = async () => {
+    if (!window.confirm("⚠️ ВНИМАНИЕ: Это удалит ВСЮ историю расходов и взносов. Участники останутся. Действие необратимо. Продолжить?")) return;
+    if (!window.confirm("Вы уверены? Данные нельзя будет восстановить.")) return;
+
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/v1/rooms/${roomId}/clear`, { method: "POST", headers: getHeaders() });
+      if (!res.ok) throw new Error();
+      toast.success("История и взносы очищены");
+      mutate();
+    } catch { toast.error("Ошибка очистки данных"); }
+    finally { setSaving(false); }
   };
 
   const addParticipant = async () => {
@@ -294,9 +335,23 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
         toggleTheme={toggleTheme} 
         isProtected={isProtected} 
         isUnlocked={isUnlocked} 
+        roomStatus={roomStatus}
         lockRoom={lockRoom} 
         setShowUnlockForm={setShowUnlockForm} 
+        onToggleStatus={handleToggleStatus}
+        onClearData={handleClearData}
       />
+
+      {/* 🔒 Баннер закрытой комнаты */}
+      {roomStatus === "closed" && (
+        <div style={{
+          padding: "10px 14px", marginBottom: "14px", borderRadius: "8px",
+          background: "var(--bg-secondary)", border: "1px solid var(--border)",
+          color: "var(--text-secondary)", fontSize: "0.85rem", display: "flex", alignItems: "center", gap: "8px"
+        }}>
+          🔒 Комната закрыта для новых операций. История и балансы доступны для просмотра.
+        </div>
+      )}
 
       {isProtected && !isUnlocked && showUnlockForm && (
         <UnlockForm 
@@ -323,8 +378,15 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
         />
         
         <main className="flex-1 min-w-0 space-y-5">
-          {isUnlocked && room && room.participants.length > 0 && (
+          {/* ✅ Формы расходов и депозитов скрываются при закрытой комнате */}
+          {isUnlocked && room && room.participants.length > 0 && roomStatus === "open" && (
             <>
+              <DepositForm 
+                roomId={roomId} 
+                participants={room.participants} 
+                isUnlocked={isUnlocked} 
+                onMutate={mutate} 
+              />
               <IndividualExpenseForm 
                 participants={room.participants} 
                 selectedId={selectedId} 
@@ -354,16 +416,11 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
               />
             </>
           )}
+          
           {room && room.participants.length > 0 && <TotalsBlock participants={room.participants} finances={finances} />}
           
           {room && room.participants.length > 0 && (
             <>
-              <DepositForm 
-                roomId={roomId} 
-                participants={room.participants} 
-                isUnlocked={isUnlocked} 
-                onMutate={mutate} 
-              />
               <BalancesTable participants={room.participants} balances={balances} />
               <SettlementsCard participants={room.participants} balances={balances} />
             </>
@@ -371,7 +428,7 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
           
           <HistoryBlock 
             events={room?.events || []} 
-            deposits={room?.deposits || []} // ✅ Добавлено
+            deposits={room?.deposits || []}
             participants={room?.participants || []} 
             isUnlocked={isUnlocked} 
             handleRollback={handleRollback} 
