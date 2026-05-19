@@ -38,6 +38,7 @@ export interface Room {
   editKey: string;
   passwordHash: string | null;
   inviteCode: string;
+  status: "open" | "closed"; // ✅ Добавлено
   createdAt: Date;
 }
 
