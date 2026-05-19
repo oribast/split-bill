@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { rooms, events, eventEntries, deposits } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { events, eventEntries, deposits } from '@/db/schema';
+import { eq, inArray } from 'drizzle-orm';
 import { getAuthContext } from '@/lib/auth';
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -11,13 +11,20 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (role !== 'admin') return NextResponse.json({ error: 'Доступ запрещён' }, { status: 403 });
 
   try {
-    // Удаляем в правильном порядке из-за foreign keys
-    await db.delete(eventEntries).where(eq(eventEntries.eventId, db.select({ id: events.id }).from(events).where(eq(events.roomId, roomId))));
-    await db.delete(events).where(eq(events.roomId, roomId));
+    // 1. Получаем ID всех событий комнаты
+    const roomEvents = await db.select({ id: events.id }).from(events).where(eq(events.roomId, roomId));
+    const eventIds = roomEvents.map(e => e.id);
+
+    // 2. Удаляем в правильном порядке (сначала записи, потом события, потом депозиты)
+    if (eventIds.length > 0) {
+      await db.delete(eventEntries).where(inArray(eventEntries.eventId, eventIds));
+      await db.delete(events).where(eq(events.roomId, roomId));
+    }
     await db.delete(deposits).where(eq(deposits.roomId, roomId));
-    
+
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (error) {
+    console.error('[ClearData] Error:', error);
     return NextResponse.json({ error: 'Ошибка очистки данных' }, { status: 500 });
   }
 }

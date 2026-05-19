@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { Participant } from "@/lib/types";
-import { Finances } from "@/lib/calculations";
+import { BalanceSheet } from "@/lib/balances"; // ✅ Заменили Finances на BalanceSheet
 import { IconTrash, IconPlus, IconCheck, IconX, IconEdit, IconUsers } from "@/components/Icons";
 
 interface Props {
@@ -13,20 +13,21 @@ interface Props {
   updateName: (id: string, name: string) => void;
   saveName: (id: string, name: string) => void;
   removeParticipant: (id: string) => void;
-  finances: Finances;
+  balances: Record<string, BalanceSheet>; // ✅ Заменили finances на balances
 }
 
 // ✅ Человекопонятный формат баланса
 const formatBalance = (cents: number) => {
   const value = cents / 100;
   if (value === 0) return { text: "Нет долгов", color: "var(--text-muted)" };
-  if (value > 0) return { text: `Должен ${value.toFixed(2)} ₽`, color: "var(--accent-danger, #ef4444)" };
-  return { text: `Вам должны ${Math.abs(value).toFixed(2)} ₽`, color: "var(--accent-success, #22c55e)" };
+  // ⚠️ Инвертировал знаки под новую математику: >0 значит "вам должны", <0 значит "вы должны"
+  if (value < 0) return { text: `Должен ${Math.abs(value).toFixed(2)} ₽`, color: "var(--accent-danger, #ef4444)" };
+  return { text: `Вам должны ${value.toFixed(2)} ₽`, color: "var(--accent-success, #22c55e)" };
 };
 
 export default function ParticipantsSidebar({
   participants, isUnlocked, newName, setNewName, addParticipant,
-  updateName, saveName, removeParticipant, finances
+  updateName, saveName, removeParticipant, balances // ✅ Заменили finances на balances
 }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -62,7 +63,7 @@ export default function ParticipantsSidebar({
           )}
 
           {participants.map(p => {
-            const bal = finances.balances[p.id] || 0;
+            const bal = balances[p.id]?.balance || 0; // ✅ Читаем баланс из новой системы
             const { text, color } = formatBalance(bal);
             const isEditing = editingId === p.id;
 
@@ -76,7 +77,7 @@ export default function ParticipantsSidebar({
                       value={editName}
                       onChange={e => {
                         setEditName(e.target.value);
-                        updateName(p.id, e.target.value); // оптимистичное обновление
+                        updateName(p.id, e.target.value);
                       }}
                       onKeyDown={e => e.key === "Enter" && confirmEdit(p.id)}
                       className="w-full px-2 py-1 text-sm rounded border bg-background outline-none"
@@ -90,7 +91,6 @@ export default function ParticipantsSidebar({
                       {p.name} {isUnlocked && <IconEdit className="w-3 h-3 opacity-40" />}
                     </div>
                   )}
-                  {/* Баланс строго под именем, без кривого центрирования */}
                   <div className="text-xs mt-0.5 font-medium" style={{ color }}>
                     {text}
                   </div>

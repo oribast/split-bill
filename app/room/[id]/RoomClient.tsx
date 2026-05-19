@@ -374,7 +374,7 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
           updateName={updateName} 
           saveName={saveName} 
           removeParticipant={removeParticipant} 
-          finances={finances} 
+          balances={balances} 
         />
         
         <main className="flex-1 min-w-0 space-y-5">
