@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { events, eventEntries, deposits } from '@/db/schema';
+import { events, eventEntries, deposits, idempotencyKeys } from '@/db/schema';
 import { eq, inArray } from 'drizzle-orm';
 import { getAuthContext } from '@/lib/auth';
 
@@ -15,11 +15,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const roomEvents = await db.select({ id: events.id }).from(events).where(eq(events.roomId, roomId));
     const eventIds = roomEvents.map(e => e.id);
 
-    // 2. Удаляем в правильном порядке (сначала записи, потом события, потом депозиты)
     if (eventIds.length > 0) {
+      // 2. Удаляем ключи идемпотентности, привязанные к этим событиям
+      await db.delete(idempotencyKeys).where(inArray(idempotencyKeys.eventId, eventIds));
+      // 3. Удаляем записи событий
       await db.delete(eventEntries).where(inArray(eventEntries.eventId, eventIds));
+      // 4. Удаляем сами события
       await db.delete(events).where(eq(events.roomId, roomId));
     }
+    
+    // 5. Удаляем депозиты
     await db.delete(deposits).where(eq(deposits.roomId, roomId));
 
     return NextResponse.json({ success: true });
