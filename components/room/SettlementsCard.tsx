@@ -8,17 +8,18 @@ import { BalanceSheet } from "@/lib/balances";
 interface Props {
   participants: { id: string; name: string }[];
   balances: Record<string, BalanceSheet>;
+  roomStatus: "open" | "closed";
 }
 
-export default function SettlementsCard({ participants, balances }: Props) {
+export default function SettlementsCard({ participants, balances, roomStatus }: Props) {
   const settlements = useMemo(() => {
+    if (roomStatus !== "closed") return [];
     const balanceMap: Record<string, number> = {};
     for (const [id, sheet] of Object.entries(balances)) {
-      // ✅ Используем итоговый баланс, который уже включает депозиты
       balanceMap[id] = sheet.balance;
     }
     return calculateSettlements(balanceMap);
-  }, [balances]);
+  }, [balances, roomStatus]);
 
   const getName = (id: string) => participants.find(p => p.id === id)?.name || 'Удалённый';
   const fmt = (c: number) => (c / 100).toFixed(2) + ' ₽';
@@ -27,6 +28,17 @@ export default function SettlementsCard({ participants, balances }: Props) {
     const text = settlements.map(s => `${getName(s.fromId)} → ${getName(s.toId)}: ${fmt(s.amount)}`).join('\n');
     navigator.clipboard.writeText(text || 'Переводов нет').then(() => toast.success('Список скопирован'));
   };
+
+  // ✅ Информационный блок, пока комната открыта
+  if (roomStatus === "open") {
+    return (
+      <div className="card" style={{ padding: '14px', textAlign: 'center', background: 'var(--bg-secondary)' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: 0, lineHeight: '1.5' }}>
+          💡 Итоговые переводы и учёт депозитов будут рассчитаны после закрытия комнаты.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="card" style={{ padding: '16px' }}>

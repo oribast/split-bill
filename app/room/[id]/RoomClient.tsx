@@ -116,11 +116,10 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
     }
   }, [room, roomId]);
 
-  // ✅ 3. Расчёт балансов при обновлении данных комнаты
   useEffect(() => {
     if (!room) return;
-    setBalances(calculateBalances(room.participants, room.events, room.deposits || []));
-  }, [room]);
+    setBalances(calculateBalances(room.participants, room.events, room.deposits || [], roomStatus));
+  }, [room, roomStatus]);
 
   const getHeaders = () => {
     const h: HeadersInit = { "Content-Type": "application/json" };
@@ -421,8 +420,8 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
           
           {room && room.participants.length > 0 && (
             <>
-              <BalancesTable participants={room.participants} balances={balances} />
-              <SettlementsCard participants={room.participants} balances={balances} />
+              <BalancesTable participants={room.participants} balances={balances} roomStatus={roomStatus} />
+              <SettlementsCard participants={room.participants} balances={balances} roomStatus={roomStatus} />
             </>
           )}
           
