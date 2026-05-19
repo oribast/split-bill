@@ -18,12 +18,13 @@ interface RoomHeaderProps {
   setShowUnlockForm: (v: boolean) => void;
   onToggleStatus: () => void;
   onClearData: () => void;
+  onDeleteRoom: () => void; // ✅ Добавлено
 }
 
 export default function RoomHeader({
   roomId, roomName, inviteCode, isAdmin, saving, theme, toggleTheme,
   isProtected, isUnlocked, roomStatus, lockRoom, setShowUnlockForm,
-  onToggleStatus, onClearData
+  onToggleStatus, onClearData, onDeleteRoom // ✅ Добавлено
 }: RoomHeaderProps) {
   const [showAccessMenu, setShowAccessMenu] = useState(false);
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
@@ -93,6 +94,15 @@ export default function RoomHeader({
                   display: "flex", alignItems: "center", gap: "8px", color: "var(--accent-danger)"
                 }}>
                   <IconTrash className="w-4 h-4" /> Очистить историю и взносы
+                </button>
+                {/* ✅ Кнопка удаления комнаты */}
+                <div style={{ height: "1px", background: "var(--border)", margin: "4px 0" }} />
+                <button onClick={onDeleteRoom} style={{
+                  width: "100%", padding: "8px 10px", textAlign: "left", background: "transparent",
+                  border: "none", cursor: "pointer", borderRadius: "6px", fontSize: "0.85rem",
+                  display: "flex", alignItems: "center", gap: "8px", color: "var(--accent-danger)"
+                }}>
+                  <IconTrash className="w-4 h-4" /> Удалить комнату
                 </button>
               </div>
             )}

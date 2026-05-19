@@ -211,6 +211,24 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
     finally { setSaving(false); }
   };
 
+  // ✅ Удаление комнаты
+  const handleDeleteRoom = async () => {
+    if (!window.confirm("⚠️ ВНИМАНИЕ: Это полностью удалит комнату, участников, историю и взносы. Действие необратимо. Продолжить?")) return;
+    if (!window.confirm("Вы абсолютно уверены? Комнату нельзя будет восстановить.")) return;
+
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/v1/rooms/${roomId}`, { method: "DELETE", headers: getHeaders() });
+      if (!res.ok) throw new Error();
+      toast.success("Комната удалена");
+      router.push("/");
+    } catch {
+      toast.error("Ошибка удаления комнаты");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const addParticipant = async () => {
     if (!isUnlocked) return toast.error("Комната защищена паролем");
     const name = newName.trim() || `Участник ${(room?.participants.length || 0) + 1}`;
@@ -339,6 +357,7 @@ export default function RoomClient({ initialData, roomId }: { initialData: RoomW
         setShowUnlockForm={setShowUnlockForm} 
         onToggleStatus={handleToggleStatus}
         onClearData={handleClearData}
+        onDeleteRoom={handleDeleteRoom} // ✅ Добавлено
       />
 
       {/* 🔒 Баннер закрытой комнаты */}
