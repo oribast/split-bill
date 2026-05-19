@@ -11,7 +11,8 @@ interface Props {
 }
 
 export default function DepositForm({ roomId, participants, isUnlocked, onMutate }: Props) {
-  const [participantId, setParticipantId] = useState("");
+  const [participantId, setParticipantId] = useState(""); // кто вносит
+  const [receiverId, setReceiverId] = useState(""); // кто получает (опционально)
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [isAdvance, setIsAdvance] = useState(false);
@@ -33,12 +34,18 @@ export default function DepositForm({ roomId, participants, isUnlocked, onMutate
       const res = await fetch(`/api/v1/rooms/${roomId}/deposits`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ participantId, amount: cents, isAdvance, note: note.trim() || undefined })
+        body: JSON.stringify({ 
+          participantId, 
+          receiverId: receiverId || null, // null = общий котёл
+          amount: cents, 
+          isAdvance, 
+          note: note.trim() || undefined 
+        })
       });
 
       if (!res.ok) throw new Error("Ошибка");
       toast.success("Взнос добавлен");
-      setAmount(""); setNote(""); setParticipantId(""); setIsAdvance(false);
+      setAmount(""); setNote(""); setParticipantId(""); setReceiverId(""); setIsAdvance(false);
       onMutate();
     } catch {
       toast.error("Ошибка добавления взноса");
@@ -58,7 +65,15 @@ export default function DepositForm({ roomId, participants, isUnlocked, onMutate
           onChange={e => setParticipantId(e.target.value)} 
           style={{ flex: '1 1 120px', padding: '8px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)' }}
         >
-          <option value="">Участник</option>
+          <option value="">Кто вносит</option>
+          {participants.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+        <select 
+          value={receiverId} 
+          onChange={e => setReceiverId(e.target.value)} 
+          style={{ flex: '1 1 120px', padding: '8px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-input)', color: 'var(--text-primary)' }}
+        >
+          <option value="">Общий котёл</option>
           {participants.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
         <input 

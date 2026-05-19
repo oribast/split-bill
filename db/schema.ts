@@ -57,7 +57,8 @@ export const auditLogs = pgTable('audit_logs', {
 export const deposits = pgTable('deposits', {
   id: uuidPk('id'),
   roomId: uuid('room_id').notNull().references(() => rooms.id, { onDelete: 'cascade' }),
-  participantId: uuid('participant_id').notNull().references(() => participants.id, { onDelete: 'cascade' }),
+  participantId: uuid('participant_id').notNull().references(() => participants.id, { onDelete: 'cascade' }), // кто внес
+  receiverId: uuid('receiver_id').references(() => participants.id, { onDelete: 'set null' }), // кому переданы деньги
   amount: integer('amount').notNull(),
   isAdvance: boolean('is_advance').default(false).notNull(),
   note: text('note'),
@@ -90,5 +91,6 @@ export const eventEntriesRelations = relations(eventEntries, ({ one }) => ({
 
 export const depositsRelations = relations(deposits, ({ one }) => ({
   room: one(rooms, { fields: [deposits.roomId], references: [rooms.id] }),
-  participant: one(participants, { fields: [deposits.participantId], references: [participants.id] }),
+  participant: one(participants, { fields: [deposits.participantId], references: [participants.id] }), // кто внес
+  receiver: one(participants, { fields: [deposits.receiverId], references: [participants.id] }), // кто получил
 }));
