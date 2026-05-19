@@ -5,6 +5,8 @@ import toast from 'react-hot-toast';
 import { IconLock, IconEye, IconEyeOff, IconPlus, IconLink, IconUsers, IconSun, IconMoon } from '@/components/Icons';
 import { useTheme } from '@/hooks/use-theme';
 
+import CreatedRoomScreen from "@/components/room/CreatedRoomScreen";
+
 // ✅ Внутренний компонент, использующий useSearchParams
 function HomeContent() {
   const router = useRouter();
@@ -18,7 +20,7 @@ function HomeContent() {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [created, setCreated] = useState<{ id: string; url: string; code: string } | null>(null);
+  const [created, setCreated] = useState<{ id: string; url: string; code: string; hasPassword: boolean } | null>(null);
 
   // ✅ Обработка ?code= при загрузке
   useEffect(() => {
@@ -49,7 +51,12 @@ function HomeContent() {
       if (data.room?.id && data.editKey && data.inviteCode) {
         if (typeof window !== "undefined") localStorage.setItem(`editKey_${data.room.id}`, data.editKey);
         const url = `${window.location.origin}/room/${data.room.id}?editKey=${data.editKey}`;
-        setCreated({ id: data.room.id, url, code: data.inviteCode });
+        setCreated({ 
+          id: data.room.id, 
+          url, 
+          code: data.inviteCode, 
+          hasPassword: usePassword && password.trim().length > 0 
+        });
       } else { setError('Ошибка создания комнаты'); }
     } catch { setError('Ошибка сети'); } finally { setLoading(false); }
   };
@@ -72,37 +79,15 @@ function HomeContent() {
   const copyLink = () => { if (created) navigator.clipboard.writeText(created.url).then(() => toast.success('Ссылка скопирована')); };
   const copyCode = () => { if (created) navigator.clipboard.writeText(created.code).then(() => toast.success('Код скопирован')); };
 
-  if (created) {
+    if (created) {
     return (
-      <div className="container relative" style={{ textAlign: 'center', paddingTop: '80px' }}>
-        {mounted && (
-          <button onClick={toggleTheme} className="absolute top-4 right-4 p-2 rounded-lg border bg-card hover:bg-secondary transition" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)' }} title={theme === 'light' ? 'Тёмная тема' : 'Светлая тема'}>
-            {theme === 'light' ? <IconMoon className="w-5 h-5" /> : <IconSun className="w-5 h-5" />}
-          </button>
-        )}
-        <h1 style={{ fontSize: '2rem', marginBottom: '16px', fontWeight: 700 }}>Комната создана!</h1>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px' }}>Отправьте ссылку или код приглашения участникам.</p>
-        <div className="card" style={{ maxWidth: '480px', margin: '0 auto 24px', padding: '20px' }}>
-          <div style={{ marginBottom: '16px' }}>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '6px' }}>Код приглашения</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
-              <span style={{ fontSize: '1.5rem', fontFamily: 'monospace', fontWeight: 700, letterSpacing: '2px', flex: 1, color: 'var(--text-primary)' }}>{created.code}</span>
-              <button onClick={copyCode} className="btn-secondary btn-small flex items-center gap-1"><IconLink className="w-4 h-4" /> Копировать</button>
-            </div>
-          </div>
-          <div style={{ marginBottom: '16px' }}>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '6px' }}>Прямая ссылка (с ключом админа)</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', background: 'var(--bg-secondary)', borderRadius: '8px', wordBreak: 'break-all' }}>
-              <IconLink className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
-              <span style={{ fontSize: '0.8rem', fontFamily: 'monospace', flex: 1, color: 'var(--text-primary)' }}>{created.url}</span>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <button className="btn-secondary" style={{ flex: 1 }} onClick={copyLink}><IconLink className="w-4 h-4 inline mr-1" /> Копировать ссылку</button>
-            <button className="btn-primary" style={{ flex: 1 }} onClick={() => router.push(`/room/${created.id}`)}>Открыть комнату</button>
-          </div>
-        </div>
-      </div>
+      <CreatedRoomScreen
+        roomId={created.id}
+        inviteCode={created.code}
+        adminLink={created.url}
+        hasPassword={created.hasPassword}
+        onOpenRoom={() => router.push(`/room/${created.id}`)}
+      />
     );
   }
 

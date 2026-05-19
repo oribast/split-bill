@@ -38,10 +38,19 @@ export interface Room {
   editKey: string;
   passwordHash: string | null;
   inviteCode: string;
+  status: "open" | "closed"; // ✅ Добавлено
   createdAt: Date;
 }
 
 export interface RoomWithRelations extends Room {
   participants: Participant[];
   events: EventWithRelations[];
+  deposits: { 
+    id: string; 
+    participantId: string; 
+    amount: number; 
+    isAdvance: boolean; 
+    note: string | null; 
+    createdAt: Date 
+  }[];
 }

@@ -1,23 +1,41 @@
 "use client";
-import { IconHistory, IconRollback } from "@/components/Icons";
+import { IconHistory, IconRollback, IconBanknote } from "@/components/Icons";
 import { EventWithRelations, Participant } from "@/lib/types";
 import { formatDate, parseDescription, fmt } from "@/lib/room-utils";
 
+interface Deposit {
+  id: string;
+  participantId: string;
+  amount: number;
+  isAdvance: boolean;
+  note: string | null;
+  createdAt: string | Date;
+}
+
 interface Props {
   events: EventWithRelations[];
+  deposits?: Deposit[];
   participants: Participant[];
   isUnlocked: boolean;
   handleRollback: (id: string) => void;
 }
 
-export default function HistoryBlock({ events, participants, isUnlocked, handleRollback }: Props) {
+export default function HistoryBlock({ events, deposits = [], participants, isUnlocked, handleRollback }: Props) {
+  // ✅ Объединяем события и депозиты, сортируем по дате
+  const history = [
+    ...events.map(e => ({ type: 'event' as const, data: e, createdAt: e.createdAt })),
+    ...deposits.map(d => ({ type: 'deposit' as const, data: d, createdAt: d.createdAt }))
+  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  const getName = (id: string | null) => id ? participants.find(p => p.id === id)?.name || 'Удалённый' : '—';
+
   return (
     <div className="card" style={{ padding: "16px" }}>
       <h2 style={{ fontSize: "1.1rem", marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>
         <IconHistory className="w-5 h-5" /> История операций
       </h2>
       
-      {events.length === 0 ? (
+      {history.length === 0 ? (
         <div className="empty-state" style={{ padding: "24px 16px" }}>
           <IconHistory className="w-8 h-8 mx-auto mb-2 text-muted" />
           <div className="empty-title" style={{ fontSize: "1rem" }}>Пока нет операций</div>
@@ -25,7 +43,42 @@ export default function HistoryBlock({ events, participants, isUnlocked, handleR
         </div>
       ) : (
         <div className="logs-modern" style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          {events.map(log => {
+          {history.map(item => {
+            // 🟡 Рендер депозита (в том же стиле что и события)
+            if (item.type === 'deposit') {
+              const d = item.data as Deposit;
+              const dateStr = formatDate(d.createdAt);
+              const pName = getName(d.participantId);
+              
+              return (
+                <div key={d.id} className="log-card" style={{ padding: "12px" }}>
+                  <div className="log-card-header" style={{ marginBottom: "8px", display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <div className="log-card-meta" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span className="log-badge" style={{ fontSize: "0.65rem", padding: "2px 8px", background: "rgba(66,153,225,0.12)", color: "var(--accent-primary)" }}>
+                        {d.isAdvance ? "Аванс" : "Взнос"}
+                      </span>
+                      <span className="log-date" style={{ fontSize: "0.8rem", fontWeight: 500, color: "var(--text-secondary)" }}>
+                        {dateStr}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="log-card-body" style={{ marginBottom: "8px" }}>
+                    <div className="log-title" style={{ fontSize: "0.9rem", fontWeight: 600, marginBottom: "4px", display: "flex", alignItems: "center", gap: "6px" }}>
+                      <IconBanknote className="w-4 h-4" style={{ color: "var(--accent-primary)" }} />
+                      {pName} внёс {fmt(d.amount)}
+                    </div>
+                    {d.note && (
+                      <div className="log-note-modern" style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "2px" }}>
+                        <span className="log-label">Комментарий:</span> {d.note}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            }
+
+            // 🔵 Рендер события (ТВОЙ ОРИГИНАЛЬНЫЙ КОД БЕЗ ИЗМЕНЕНИЙ)
+            const log = item.data as EventWithRelations;
             const dateStr = formatDate(log.createdAt);
             const { main, comment } = parseDescription(log.description || "");
             

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/db';
-import { rooms, auditLogs } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { rooms, participants, events, eventEntries, deposits, idempotencyKeys, auditLogs } from '@/db/schema';
+import { eq, inArray } from 'drizzle-orm';
 import { getAuthContext } from '@/lib/auth';
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -11,6 +11,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     where: eq(rooms.id, id),
     with: {
       participants: true,
+      deposits: true,
       events: {
         with: {
           entries: true,
@@ -32,19 +33,37 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   if (response) return response;
   
   if (role !== 'admin') {
-    return NextResponse.json({ error: 'Только создатель может удалить комнату' }, { status: 403 });
+    return NextResponse.json({ error: 'Только администратор может удалить комнату' }, { status: 403 });
   }
 
   try {
-    await db.transaction(async (tx) => {
-      // Каскадное удаление участников/событий настроено на уровне БД
-      await tx.delete(rooms).where(eq(rooms.id, id));
-      await tx.insert(auditLogs).values({
-        action: 'room_deleted',
-        roomId: id,
-        metadata: { deletedAt: new Date().toISOString() }
-      });
+    // 1. Получаем ID всех событий комнаты
+    const roomEvents = await db.select({ id: events.id }).from(events).where(eq(events.roomId, id));
+    const eventIds = roomEvents.map(e => e.id);
+
+    // 2. Последовательно удаляем зависимости (строго от дочерних к родительским)
+    if (eventIds.length > 0) {
+      // Сначала ключи идемпотентности
+      await db.delete(idempotencyKeys).where(inArray(idempotencyKeys.eventId, eventIds));
+      // Затем записи распределения
+      await db.delete(eventEntries).where(inArray(eventEntries.eventId, eventIds));
+      // Затем сами события
+      await db.delete(events).where(eq(events.roomId, id));
+    }
+
+    // Удаляем депозиты и участников
+    await db.delete(deposits).where(eq(deposits.roomId, id));
+    await db.delete(participants).where(eq(participants.roomId, id));
+
+    // 3. Фиксируем удаление в аудите (до удаления самой комнаты, чтобы roomId был валиден если есть FK)
+    await db.insert(auditLogs).values({
+      action: 'room_deleted',
+      roomId: id,
+      metadata: { deletedAt: new Date().toISOString() }
     });
+
+    // 4. Удаляем комнату в самом конце
+    await db.delete(rooms).where(eq(rooms.id, id));
 
     return NextResponse.json({ success: true });
   } catch (error) {
