@@ -37,29 +37,33 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   }
 
   try {
-    await db.transaction(async (tx) => {
-      // 1. Получаем ID всех событий комнаты
-      const roomEvents = await tx.select({ id: events.id }).from(events).where(eq(events.roomId, id));
-      const eventIds = roomEvents.map(e => e.id);
+    // 1. Получаем ID всех событий комнаты
+    const roomEvents = await db.select({ id: events.id }).from(events).where(eq(events.roomId, id));
+    const eventIds = roomEvents.map(e => e.id);
 
-      // 2. Явно удаляем зависимости в строгом порядке (обход FK-ограничений)
-      if (eventIds.length > 0) {
-        await tx.delete(idempotencyKeys).where(inArray(idempotencyKeys.eventId, eventIds));
-        await tx.delete(eventEntries).where(inArray(eventEntries.eventId, eventIds));
-        await tx.delete(events).where(eq(events.roomId, id));
-      }
+    // 2. Последовательно удаляем зависимости (строго от дочерних к родительским)
+    if (eventIds.length > 0) {
+      // Сначала ключи идемпотентности
+      await db.delete(idempotencyKeys).where(inArray(idempotencyKeys.eventId, eventIds));
+      // Затем записи распределения
+      await db.delete(eventEntries).where(inArray(eventEntries.eventId, eventIds));
+      // Затем сами события
+      await db.delete(events).where(eq(events.roomId, id));
+    }
 
-      await tx.delete(deposits).where(eq(deposits.roomId, id));
-      await tx.delete(participants).where(eq(participants.roomId, id));
-      await tx.delete(rooms).where(eq(rooms.id, id));
+    // Удаляем депозиты и участников
+    await db.delete(deposits).where(eq(deposits.roomId, id));
+    await db.delete(participants).where(eq(participants.roomId, id));
 
-      // 3. Фиксируем удаление в аудите
-      await tx.insert(auditLogs).values({
-        action: 'room_deleted',
-        roomId: id,
-        metadata: { deletedAt: new Date().toISOString() }
-      });
+    // 3. Фиксируем удаление в аудите (до удаления самой комнаты, чтобы roomId был валиден если есть FK)
+    await db.insert(auditLogs).values({
+      action: 'room_deleted',
+      roomId: id,
+      metadata: { deletedAt: new Date().toISOString() }
     });
+
+    // 4. Удаляем комнату в самом конце
+    await db.delete(rooms).where(eq(rooms.id, id));
 
     return NextResponse.json({ success: true });
   } catch (error) {
